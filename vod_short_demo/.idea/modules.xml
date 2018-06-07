@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://D:\Work\ReadyForOnline\ShortVideo\vod_short_demo\app\app.iml" filepath="D:\Work\ReadyForOnline\ShortVideo\vod_short_demo\app\app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/magicfilter/magicfilter.iml" filepath="$PROJECT_DIR$/magicfilter/magicfilter.iml" />
+      <module fileurl="file://D:\Work\ReadyForOnline\ShortVideo\vod_short_demo\magicfilter\magicfilter.iml" filepath="D:\Work\ReadyForOnline\ShortVideo\vod_short_demo\magicfilter\magicfilter.iml" />
+      <module fileurl="file://$PROJECT_DIR$/vod_short_demo.iml" filepath="$PROJECT_DIR$/vod_short_demo.iml" />
+      <module fileurl="file://D:\Work\ReadyForOnline\ShortVideo\vod_short_demo\vod_short_demo.iml" filepath="D:\Work\ReadyForOnline\ShortVideo\vod_short_demo\vod_short_demo.iml" />
+    </modules>
+  </component>
+</project>
