@@ -6,6 +6,7 @@ public class VideoBean {
     public int width;
     public int height;
     public int rate;
+    public int rotation;
     public long duration; //单位：ms
 
 }

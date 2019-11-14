@@ -13,4 +13,53 @@
         <item name="android:windowBackground">@color/white</item>
     </style>
 
+    <style name="EditBubbleText" parent="android:style/Theme.Dialog">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@color/editBubbleTextBac</item>
+    </style>
+
+    <style name="StickerDialog" parent="android:style/Theme.Dialog">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@color/stickerBacColor</item>
+    </style>
+
+    <style name="MusicDialog" parent="android:style/Theme.Dialog">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@color/musicBacColor</item>
+    </style>
+
+    <style name="HandleProgressDialog" parent="android:style/Theme.Dialog">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@drawable/black_corner_bac</item>
+    </style>
+
+    <style name="ll_edit_operation">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:gravity">center</item>
+    </style>
+
+    <style name="iv_edit_operation">
+        <item name="android:layout_width">39dp</item>
+        <item name="android:layout_height">39dp</item>
+    </style>
+
+    <style name="tv_edit_operation">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/white</item>
+    </style>
+
+    <style name="tv_cut_video_size">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/white</item>
+    </style>
+
 </resources>

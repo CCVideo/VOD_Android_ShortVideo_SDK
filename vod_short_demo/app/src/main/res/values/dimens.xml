@@ -15,6 +15,6 @@
     <dimen name="dp100">100dp</dimen>
     <dimen name="dp6">6dp</dimen>
 
-    <dimen name="ugc_item_thumb_height">65dp</dimen>
+    <dimen name="ugc_item_thumb_height">60dp</dimen>
 
 </resources>

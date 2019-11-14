@@ -1,168 +1,199 @@
 package bokecc.shortvideosdk;
 
-import android.Manifest;
+import android.app.Activity;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.graphics.PixelFormat;
+import android.graphics.SurfaceTexture;
+import android.hardware.Camera;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
+import android.view.TextureView;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.Toast;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
-import com.seu.magicfilter.MagicEngine;
-import com.seu.magicfilter.camera.CameraEngine;
-import com.seu.magicfilter.encoder.MediaAudioEncoder;
-import com.seu.magicfilter.encoder.MediaEncoder;
-import com.seu.magicfilter.encoder.MediaMuxerWrapper;
-import com.seu.magicfilter.encoder.MediaVideoEncoder;
-import com.seu.magicfilter.filter.helper.MagicFilterType;
-import com.seu.magicfilter.widget.MagicCameraView;
+import com.bokecc.camerafilter.camera.engine.CameraEngine;
+import com.bokecc.camerafilter.camera.engine.CameraParam;
+import com.bokecc.camerafilter.camera.listener.OnRecordListener;
+import com.bokecc.camerafilter.camera.model.AspectRatio;
+import com.bokecc.camerafilter.camera.recordervideo.PreviewRecorder;
+import com.bokecc.camerafilter.camera.render.PreviewRenderer;
+import com.bokecc.camerafilter.camera.widget.AspectFrameLayout;
+import com.bokecc.camerafilter.camera.widget.CameraTextureView;
+import com.bokecc.camerafilter.glfilter.color.bean.DynamicColor;
+import com.bokecc.camerafilter.glfilter.resource.FilterHelper;
+import com.bokecc.camerafilter.multimedia.VideoCombiner;
+import com.bokecc.shortvideo.videoedit.ShortVideoHelper;
 
 import java.io.File;
-import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.GregorianCalendar;
-import java.util.Locale;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import bokecc.shortvideosdk.cutvideo.VideoCutActivity;
-import bokecc.shortvideosdk.merge.Mp4ParserMerger;
-import bokecc.shortvideosdk.model.MediaObject;
-import bokecc.shortvideosdk.widget.DialogFilter;
+import bokecc.shortvideosdk.cutvideo.VideoBean;
+import bokecc.shortvideosdk.editvideo.CutVideoActivity;
+import bokecc.shortvideosdk.editvideo.EditVideoActivity;
+import bokecc.shortvideosdk.presenter.CameraPreviewPresenter;
+import bokecc.shortvideosdk.util.FileUtils;
+import bokecc.shortvideosdk.util.MultiUtils;
+import bokecc.shortvideosdk.widget.BeautyDialog;
+import bokecc.shortvideosdk.widget.FilterDialog;
 import bokecc.shortvideosdk.widget.ProgressView;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener{
-
-    ImageView flashControlView, switchCameraView, filterView;
-    ImageView closeView;
-    ImageView captureView, finishCaptureView, deleteLastVideoView;
-    MagicCameraView cameraView;
-    ProgressView progressView;
-    String TAG = "MainActivity";
-
-    //TODO 配置摄像参数
-    final int CAMERA_WIDTH = 480;
-    final int CAMERA_HEIGHT = 640;
-
-    //最大录制时长
-    int maxRecordDuration = 30 * 1000;
-
-    String suffix = "cccc.mp4";
-
-    String pathEx = Environment.getExternalStorageDirectory() + "/CCDownload/";
-    String outName;
-
-    //权限管理
-    private static String[] PERMISSIONS_STORAGE = {
-            Manifest.permission.CAMERA,
-            Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE };
-
-    private int REQUEST_CODE = 1;
+    private ImageView iv_flash_light, switchCameraView,iv_record_video, iv_complete_record,
+            iv_delete_last, iv_beauty, iv_countdown_time, iv_countdown, iv_close;
+    private ProgressView progressView;
+    private String videoPath, dirName = "AHuodeShortVideo";
+    private int SELECTVIDEOCODE = 1, currentBeautyWhiteValue = 0, currentBeautySkinValue = 0, currentFilter = 0,
+            delayRecordTime = 3;
+    private Activity activity;
+    private LinearLayout ll_beauty, ll_filter, ll_select_video, ll_camera_control;
+    private TextView tv_record_time;
+    private AspectFrameLayout afl_layout;
+    private CameraTextureView cameraTextureView;
+    private CameraPreviewPresenter mPreviewPresenter;
+    // 预览参数
+    private CameraParam mCameraParam;
+    //是否开启了闪光灯
+    private boolean flashOn = false;
+    //是否可以启动倒计时拍摄任务
+    private boolean isCanStartDelayRecord = true, isOpenDelayRecord = false;
+    private Timer delayTimer;
+    private DelayRecordTask delayRecordTask;
+    private boolean isCanChangeSize = false;
+    private int focusSize = 120;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        initScreen();
         setContentView(R.layout.activity_main);
+        activity = this;
+        MultiUtils.setFullScreen(this);
+        //修改录制时长 单位：毫秒
+        CameraParam.DEFAULT_RECORD_TIME = 60 * 1000;
 
-        cameraView = findById(R.id.magic_camera_view);
-
-        cameraView.setCamraParams(CAMERA_WIDTH, CAMERA_HEIGHT);
-
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            //进入到这里代表没有权限.
-            ActivityCompat.requestPermissions(this, PERMISSIONS_STORAGE, REQUEST_CODE);
-        } else {
-            cameraView.setVisibility(View.VISIBLE);
-        }
-
-        initMagicEngine();
         initView();
         resetViewStatus();
+        initResources();
+
+        mCameraParam = CameraParam.getInstance();
+        mPreviewPresenter = new CameraPreviewPresenter(this);
+        mPreviewPresenter.onAttach(activity);
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_CODE) {
-            Toast.makeText(getApplicationContext(),"授权成功",Toast.LENGTH_SHORT).show();
-            cameraView.setVisibility(View.VISIBLE);
-        }else{
-            Toast.makeText(getApplicationContext(),"授权拒绝",Toast.LENGTH_SHORT).show();
-            cameraView.setVisibility(View.GONE);
-        }
-    }
-
-    //初始化屏幕设置
-    public void initScreen(){
-        getWindow().setFormat(PixelFormat.TRANSLUCENT);
-        getSupportActionBar().hide();
-    }
 
     private void initView() {
-        captureView = findById(R.id.capture_video);
-        captureView.setOnClickListener(this);
+        //预览画面
+        afl_layout = findViewById(R.id.afl_layout);
+        cameraTextureView = new CameraTextureView(activity);
+        cameraTextureView.setSurfaceTextureListener(mSurfaceTextureListener);
+        cameraTextureView.addCameraViewClickListener(onCameraViewClickListener);
+        afl_layout.addView(cameraTextureView);
+        afl_layout.setAspectRatio(MultiUtils.div(2, 9, 16));
 
-        flashControlView = findById(R.id.flash_light);
-        flashControlView.setOnClickListener(this);
+        iv_beauty = findViewById(R.id.iv_beauty);
 
-        switchCameraView = findById(R.id.switch_camera);
+        iv_record_video = findViewById(R.id.iv_record_video);
+        iv_record_video.setOnClickListener(this);
+
+        iv_countdown_time = findViewById(R.id.iv_countdown_time);
+        iv_countdown_time.setOnClickListener(this);
+
+        iv_flash_light = findViewById(R.id.iv_flash_light);
+        iv_flash_light.setOnClickListener(this);
+
+        switchCameraView = findViewById(R.id.iv_switch_camera);
         switchCameraView.setOnClickListener(this);
 
-        filterView = findById(R.id.camera_filter);
-        filterView.setOnClickListener(this);
 
-        finishCaptureView = findById(R.id.finish_capture);
-        finishCaptureView.setOnClickListener(this);
+        iv_countdown = findViewById(R.id.iv_countdown);
 
-        closeView = findById(R.id.close_capture_all);
-        closeView.setOnClickListener(this);
+        iv_complete_record = findViewById(R.id.iv_complete_record);
+        iv_complete_record.setOnClickListener(this);
 
-        deleteLastVideoView = findById(R.id.delete_last);
-        deleteLastVideoView.setOnClickListener(this);
+        iv_delete_last = findViewById(R.id.iv_delete_last);
+        iv_delete_last.setOnClickListener(this);
 
-        progressView = findById(R.id.progress_view);
-        progressView.setData(mediaObject);
-        progressView.setMaxDuration(maxRecordDuration);
+        iv_close = findViewById(R.id.iv_close);
+        iv_close.setOnClickListener(this);
+
+        ll_beauty = findViewById(R.id.ll_beauty);
+        ll_beauty.setOnClickListener(this);
+
+        ll_filter = findViewById(R.id.ll_filter);
+        ll_filter.setOnClickListener(this);
+
+        ll_select_video = findViewById(R.id.ll_select_video);
+        ll_select_video.setOnClickListener(this);
+
+        tv_record_time = findViewById(R.id.tv_record_time);
+
+        progressView = findViewById(R.id.progress_view);
+        ll_camera_control = findViewById(R.id.ll_camera_control);
+        progressView.setData();
+        progressView.setMaxDuration(CameraParam.DEFAULT_RECORD_TIME);
+
     }
 
-    Timer timer = new Timer();
+    /**
+     * 初始化滤镜资源
+     */
+    private void initResources() {
+        new Thread(() -> {
+            FilterHelper.initAssetsFilter(activity);
+        }).start();
+    }
+
+    private String getOutPutPath() {
+        File file = new File(Environment.getExternalStorageDirectory() + File.separator + dirName, "RecordVideo");
+        if (!file.exists()) {
+            file.mkdir();
+        }
+        return file.getAbsolutePath() + File.separator + System.currentTimeMillis() + ".mp4";
+    }
+
+    private TextureView.SurfaceTextureListener mSurfaceTextureListener = new TextureView.SurfaceTextureListener() {
+        @Override
+        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+            mPreviewPresenter.bindSurface(surface);
+            mPreviewPresenter.changePreviewSize(width, height);
+        }
+
+        @Override
+        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+            mPreviewPresenter.changePreviewSize(width, height);
+        }
+
+        @Override
+        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+            return false;
+        }
+
+        @Override
+        public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+
+        }
+    };
 
     TimerTask captureTimerTask;
 
     //更新录制进度
-    private void startCaptureTimer() {
-        stopCaptureTimer();
+    public void updateRecordProgress(long duration) {
+        progressView.setCurrentDuration((int) duration);
+        if (duration >= CameraParam.DEFAULT_RECORD_TIME) {
+            combineVideo();
+            tv_record_time.setVisibility(View.GONE);
+        } else {
+            int recordTime = (int) (duration / 1000);
+            tv_record_time.setText(recordTime + "s");
+            tv_record_time.setVisibility(View.VISIBLE);
+        }
 
-        captureTimerTask = new TimerTask() {
-            @Override
-            public void run() {
-
-                mediaObject.getCurrentPart().addDuration(50);
-
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-
-                        if(mediaObject.getDuration() >= maxRecordDuration) {
-                            finishCapture();
-                            stopCaptureTimer();
-                        }
-                    }
-                });
-
-            }
-        };
-
-        timer.schedule(captureTimerTask, 0, 50);
     }
 
     private void stopCaptureTimer() {
@@ -172,364 +203,373 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void resetViewStatus() {
-        captureView.setImageResource(R.drawable.start_capture);
-
-        filterView.setVisibility(View.VISIBLE);
+        iv_record_video.setImageResource(R.mipmap.iv_record_video);
         stopCaptureTimer();
-        progressView.stop();
-
         resetFinishCaptureView();
-    }
-
-    private void showCaptureViewStatus() {
-        finishCaptureView.setVisibility(View.VISIBLE);
-        captureView.setImageResource(R.drawable.stop_capture);
-        filterView.setVisibility(View.GONE);
-        startCaptureTimer();
-        progressView.start();
-    }
-
-    private void resetStopStatus() {
-        isAudioStopped = false;
-        isVideoStopped = false;
-        isFinishCapture = false;
     }
 
     @Override
     public void onClick(View v) {
-
-        if (v.getId() == R.id.delete_last) {
-            deleteLastVideo();
-            return;
-        } else {
-            resetLastVideoStatus();
-        }
-
         switch (v.getId()) {
-            case R.id.capture_video:
-                switchRecordStatus();
+            case R.id.iv_record_video:
+                if (isOpenDelayRecord) {
+                    if (isCanStartDelayRecord) {
+                        startDelayRecordTask();
+                    }
+                } else {
+                    switchRecordStatus();
+                }
                 break;
-            case R.id.finish_capture:
-                finishCapture();
+            case R.id.iv_delete_last:
+                deleteLastVideo();
                 break;
-            case R.id.flash_light:
+            case R.id.iv_complete_record:
+                if (mPreviewPresenter.isRecording()) {
+                    MultiUtils.showToast(activity, "请稍候");
+                } else {
+                    combineVideo();
+                }
+                break;
+            case R.id.iv_flash_light:
                 switchFlash();
                 break;
-            case R.id.switch_camera:
+            case R.id.iv_switch_camera:
                 switchCamera();
                 break;
-            case R.id.close_capture_all:
-                closeAll();
+
+            case R.id.ll_filter:
+                FilterDialog filterDialog = new FilterDialog(activity, currentFilter, new FilterDialog.OnSelectFilter() {
+                    @Override
+                    public void selectFilter(int filterPos, DynamicColor color) {
+                        currentFilter = filterPos;
+                        mPreviewPresenter.changeDynamicFilter(color);
+                    }
+                });
+                filterDialog.show();
                 break;
-            case R.id.camera_filter:
-                switchFilterStatus();
-                break;
-        }
-    }
 
-    private void deleteLastVideo() {
-
-        if (mediaObject.getMedaParts().size() < 1) {
-            toastSomeThing("请先录制一段视频");
-            return;
-        }
-
-        if (mMuxer != null) {
-            toastSomeThing("录制中，请停止录制后进行删除操作");
-            return;
-        }
-
-        MediaObject.MediaPart currentPart = mediaObject.getCurrentPart();
-        if (currentPart.remove) {
-            mediaObject.removePart(currentPart, true);
-            resetFinishCaptureView();
-
-        } else {
-            currentPart.remove = true;
-        }
-    }
-
-    private void resetFinishCaptureView() {
-        if (mediaObject.getMedaParts().size() > 0) {
-            finishCaptureView.setVisibility(View.VISIBLE);
-        } else {
-            finishCaptureView.setVisibility(View.GONE);
-        }
-    }
-
-    private void resetLastVideoStatus() {
-        MediaObject.MediaPart currentPart = mediaObject.getCurrentPart();
-        if (currentPart != null) {
-            currentPart.remove = false;
-        }
-    }
-
-    private void toastSomeThing(String thing) {
-        Toast.makeText(this, thing, Toast.LENGTH_SHORT).show();
-    }
-
-    private void mp4ParserMerge(){
-        Mp4ParserMerger.merge(mediaObject.getMedaParts(), outName, mergeListener);
-    }
-
-    Mp4ParserMerger.MergeListener mergeListener = new Mp4ParserMerger.MergeListener() {
-        @Override
-        public void mergeFinish() {
-
-            mediaObject.clearAll(true);
-
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    startPreviewActivity();
+            case R.id.ll_beauty:
+                iv_beauty.setImageResource(R.mipmap.iv_beauty_on);
+                if (currentBeautySkinValue == 0) {
+                    currentBeautySkinValue = 50;
+                    currentBeautyWhiteValue = 50;
+                    mCameraParam.beauty.beautyIntensity = 0.5f;
+                    mCameraParam.beauty.complexionIntensity = 0.5f;
                 }
-            });
+
+                BeautyDialog beautyDialog = new BeautyDialog(activity, currentBeautyWhiteValue, currentBeautySkinValue, new BeautyDialog.OnBeauty() {
+                    @Override
+                    public void getBeautyWhiteValue(int value) {
+                        currentBeautyWhiteValue = value;
+                    }
+
+                    @Override
+                    public void getBeautySkinValue(int value) {
+                        currentBeautySkinValue = value;
+                    }
+                });
+                beautyDialog.show();
+                break;
+            case R.id.ll_select_video:
+                selectVideo();
+                break;
+            case R.id.iv_countdown_time:
+                if (!isCanStartDelayRecord) {
+                    return;
+                }
+                isOpenDelayRecord = !isOpenDelayRecord;
+                if (isOpenDelayRecord) {
+                    iv_countdown_time.setImageResource(R.mipmap.iv_countdown_on);
+                } else {
+                    iv_countdown_time.setImageResource(R.mipmap.iv_countdown_off);
+                }
+                break;
+
+            case R.id.iv_close:
+                if (mPreviewPresenter.isRecording()) {
+                    MultiUtils.showToast(activity, "请稍候");
+                } else {
+                    mPreviewPresenter.removeAllSubVideo();
+                    resetView();
+                }
+
+                break;
+
         }
+    }
 
+    //预览画面点击事件
+    private CameraTextureView.OnCameraViewClickListener onCameraViewClickListener = new CameraTextureView.OnCameraViewClickListener() {
         @Override
-        public void mergeFail(Exception e) {
-            mediaObject.clearAll(true);
-
+        public void onCameraViewClick(float x, float y) {
+            CameraEngine.getInstance().setFocusArea(CameraEngine.getFocusArea((int) x, (int) y,
+                    cameraTextureView.getWidth(), cameraTextureView.getHeight(), focusSize));
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    Toast.makeText(getApplicationContext(), "合并失败，请重新录制", Toast.LENGTH_SHORT).show();
+                    cameraTextureView.showFocusAnimation();
                 }
             });
         }
     };
 
-    boolean isFinishCapture = false;
-    private void finishCapture() {
-        isFinishCapture = true;
-        Toast.makeText(this, "合并中，请稍候...", Toast.LENGTH_SHORT).show();
+    private void startDelayRecordTask() {
+        isCanStartDelayRecord = false;
+        cancelDelayRecordTask();
+        delayRecordTime = 3;
+        iv_countdown.setImageResource(R.mipmap.iv_countdown_three);
+        iv_countdown.setVisibility(View.VISIBLE);
+        iv_countdown_time.setImageResource(R.mipmap.iv_countdown_on);
+        delayTimer = new Timer();
+        delayRecordTask = new DelayRecordTask();
+        delayTimer.schedule(delayRecordTask, 1000, 1000);
+    }
 
-        if (mMuxer != null) {
-            stopRecording();
-        } else {
-            mergeVideo();
+    private void cancelDelayRecordTask() {
+        if (delayTimer != null) {
+            delayTimer.cancel();
+        }
+        if (delayRecordTask != null) {
+            delayRecordTask.cancel();
         }
     }
 
-    private void startPreviewActivity() {
-        flashControlView.setImageResource(R.drawable.light_ic_off);
-//        Intent intent = new Intent(MainActivity.this, CapturePreviewActivity.class);
-//        intent.putExtra("video_path", outName);
-        Intent intent = new Intent(MainActivity.this, VideoCutActivity.class);
-        intent.putExtra("video_path", outName);
+    // 倒计时拍摄任务
+    class DelayRecordTask extends TimerTask {
+        @Override
+        public void run() {
+            activity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    delayRecordTime = delayRecordTime - 1;
+                    if (delayRecordTime == 2) {
+                        iv_countdown.setImageResource(R.mipmap.iv_countdown_two);
+                    } else if (delayRecordTime == 1) {
+                        iv_countdown.setImageResource(R.mipmap.iv_countdown_one);
+                    } else if (delayRecordTime == 0) {
+                        iv_countdown.setVisibility(View.GONE);
+                        switchRecordStatus();
+                    } else {
+                        isOpenDelayRecord = false;
+                        isCanStartDelayRecord = true;
+                        iv_countdown_time.setImageResource(R.mipmap.iv_countdown_off);
+                        cancelDelayRecordTask();
+                    }
+
+                }
+            });
+
+        }
+    }
+
+
+    //选择视频
+    private void selectVideo() {
+        Intent intent = null;
+        if (android.os.Build.VERSION.SDK_INT < 19) {
+            intent = new Intent(Intent.ACTION_GET_CONTENT);
+        } else {
+            intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        }
+        intent.setType("video/*");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+
+        try {
+            startActivityForResult(Intent.createChooser(intent, "请选择一个视频文件"), SELECTVIDEOCODE);
+        } catch (android.content.ActivityNotFoundException ex) {
+            MultiUtils.showToast(this, "请安装文件管理器");
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode != Activity.RESULT_OK) {
+            return;
+        }
+        if (requestCode == SELECTVIDEOCODE) {
+            Uri uri = data.getData();
+            if (Build.VERSION.SDK_INT >= 19) {
+                videoPath = MultiUtils.getPath_above19(activity, uri);
+            } else {
+                videoPath = MultiUtils.getFilePath_below19(activity, uri);
+            }
+
+            if (videoPath == null) {
+                MultiUtils.showToast(activity, "文件有误，请重新选择");
+                return;
+            }
+            long videoSize = FileUtils.getFileSize(videoPath);
+            if (videoSize > 100 * 1024 * 1024) {
+                MultiUtils.showToast(activity, "视频大小不能超过100MB");
+                return;
+            }
+            VideoBean localVideoInfo = MultiUtils.getLocalVideoInfo(videoPath);
+            int rotation = localVideoInfo.rotation;
+            long duration = localVideoInfo.duration;
+            if (duration > 3 * 60 * 1000) {
+                MultiUtils.showToast(activity, "视频时长不能超过3分钟");
+                return;
+            }
+            startActivity(new Intent(activity, CutVideoActivity.class).putExtra("videoPath", videoPath).putExtra("rotation", rotation));
+            finish();
+        }
+
+    }
+
+    private void deleteLastVideo() {
+        if (PreviewRecorder.getInstance().getNumberOfSubVideo() < 1) {
+            MultiUtils.showToast(activity, "请先录制一段视频");
+        }
+
+        if (mPreviewPresenter.isRecording()) {
+            MultiUtils.showToast(activity, "录制中，请停止录制后进行删除操作");
+            return;
+        }
+
+
+        PreviewRecorder.getInstance().removeLastSubVideo();
+        resetFinishCaptureView();
+
+        int currentDuration = PreviewRecorder.getInstance().getDuration();
+        int recordTime = currentDuration / 1000;
+        tv_record_time.setText(recordTime + "s");
+    }
+
+    private void resetFinishCaptureView() {
+        if (PreviewRecorder.getInstance().getNumberOfSubVideo() > 0) {
+            iv_complete_record.setVisibility(View.VISIBLE);
+            iv_delete_last.setVisibility(View.VISIBLE);
+            iv_close.setVisibility(View.VISIBLE);
+        } else {
+            resetView();
+        }
+    }
+
+
+    //合成视频
+    public void combineVideo() {
+        mPreviewPresenter.stopRecord();
+        mPreviewPresenter.destroyRecorder();
+        //分段视频的数量
+        int numberOfSubVideo = mPreviewPresenter.getNumberOfSubVideo();
+        if (numberOfSubVideo > 1) {
+            videoPath = getOutPutPath();
+            PreviewRecorder.getInstance().combineVideo(videoPath, mCombineListener);
+        } else {
+            List<String> subVideoPathList = PreviewRecorder.getInstance().getSubVideoPathList();
+            if (subVideoPathList != null && subVideoPathList.size() > 0) {
+                videoPath = subVideoPathList.get(0);
+                startEdit();
+            } else {
+                startEdit();
+            }
+        }
+    }
+
+    // 合成监听器
+    private VideoCombiner.CombineListener mCombineListener = new VideoCombiner.CombineListener() {
+        @Override
+        public void onCombineStart() {
+            activity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    MultiUtils.showToast(activity, "处理中，请稍候");
+                }
+            });
+        }
+
+        @Override
+        public void onCombineProcessing(final int current, final int sum) {
+
+        }
+
+        @Override
+        public void onCombineFinished(final boolean success) {
+            startEdit();
+        }
+    };
+
+    private void startEdit() {
+        mPreviewPresenter.removeAllSubVideo();
+        activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                intoEditActivity();
+                resetView();
+            }
+        });
+    }
+
+    private void resetView() {
+        ll_beauty.setVisibility(View.VISIBLE);
+        ll_camera_control.setVisibility(View.VISIBLE);
+        ll_filter.setVisibility(View.VISIBLE);
+        ll_select_video.setVisibility(View.VISIBLE);
+        tv_record_time.setVisibility(View.GONE);
+        iv_delete_last.setVisibility(View.GONE);
+        iv_close.setVisibility(View.GONE);
+        iv_complete_record.setVisibility(View.GONE);
+    }
+
+    private void intoEditActivity() {
+        if (mCameraParam.supportFlash) {
+            CameraEngine.getInstance().setFlashLight(false);
+        }
+        iv_flash_light.setImageResource(R.mipmap.iv_flash_off);
+        Intent intent = new Intent(activity, EditVideoActivity.class);
+        intent.putExtra("videoPath", videoPath);
+        intent.putExtra("isRecord", true);
         startActivity(intent);
+        finish();
+
     }
 
     private void switchFlash() {
-        switch (magicEngine.switchFlash()) {
-            case CameraEngine.FLASH_ON:
-                flashControlView.setImageResource(R.drawable.light_ic_on);
-                break;
-            case CameraEngine.FLASH_OFF:
-                flashControlView.setImageResource(R.drawable.light_ic_off);
-                break;
-            default:
-                break;
-        }
-    }
-
-    boolean isOpen = false;
-    private void switchFilterStatus() {
-        DialogFilter dialogFilter = new DialogFilter(MainActivity.this, new DialogFilter.SelectFilter() {
-            @Override
-            public void type(int i) {
-                if (i==0){
-                    filterView.setImageResource(R.drawable.filter_close);
-                }else {
-                    filterView.setImageResource(R.drawable.filter_open);
-                }
-                switch (i){
-                    case 0:
-                        magicEngine.setFilter(MagicFilterType.NONE);
-                        break;
-                    case 1:
-                        magicEngine.setFilter(MagicFilterType.BEAUTY);
-                        break;
-                    case 2:
-                        magicEngine.setFilter(MagicFilterType.FAIRYTALE);
-                        break;
-                    case 3:
-                        magicEngine.setFilter(MagicFilterType.SUNRISE);
-                        break;
-                    case 4:
-                        magicEngine.setFilter(MagicFilterType.SUNSET);
-                        break;
-                    case 5:
-                        magicEngine.setFilter(MagicFilterType.WHITECAT);
-                        break;
-                    case 6:
-                        magicEngine.setFilter(MagicFilterType.BLACKCAT);
-                        break;
-
-                    case 7:
-                        magicEngine.setFilter(MagicFilterType.SKINWHITEN);
-                        break;
-
-                    case 8:
-                        magicEngine.setFilter(MagicFilterType.HEALTHY);
-                        break;
-
-                    case 9:
-                        magicEngine.setFilter(MagicFilterType.SWEETS);
-                        break;
-                    case 10:
-                        magicEngine.setFilter(MagicFilterType.ROMANCE);
-                        break;
-
-                    case 11:
-                        magicEngine.setFilter(MagicFilterType.SAKURA);
-                        break;
-                    case 12:
-                        magicEngine.setFilter(MagicFilterType.WARM);
-                        break;
-                    case 13:
-                        magicEngine.setFilter(MagicFilterType.ANTIQUE);
-                        break;
-                    case 14:
-                        magicEngine.setFilter(MagicFilterType.NOSTALGIA);
-                        break;
-
-                    case 15:
-                        magicEngine.setFilter(MagicFilterType.CALM);
-                        break;
-
-                    case 16:
-                        magicEngine.setFilter(MagicFilterType.LATTE);
-                        break;
-                    case 17:
-                        magicEngine.setFilter(MagicFilterType.TENDER);
-                        break;
-
-                    case 18:
-                        magicEngine.setFilter(MagicFilterType.COOL);
-                        break;
-
-                    case 19:
-                        magicEngine.setFilter(MagicFilterType.EMERALD);
-                        break;
-                    case 20:
-                        magicEngine.setFilter(MagicFilterType.EVERGREEN);
-                        break;
-                    case 21:
-                        magicEngine.setFilter(MagicFilterType.CRAYON);
-                        break;
-                    case 22:
-                        magicEngine.setFilter(MagicFilterType.SKETCH);
-                        break;
-                    case 23:
-                        magicEngine.setFilter(MagicFilterType.AMARO);
-                        break;
-                    case 24:
-                        magicEngine.setFilter(MagicFilterType.BRANNAN);
-                        break;
-                    case 25:
-                        magicEngine.setFilter(MagicFilterType.BROOKLYN);
-                        break;
-                    case 26:
-                        magicEngine.setFilter(MagicFilterType.EARLYBIRD);
-                        break;
-                    case 27:
-                        magicEngine.setFilter(MagicFilterType.FREUD);
-                        break;
-                    case 28:
-                        magicEngine.setFilter(MagicFilterType.HEFE);
-                        break;
-                    case 29:
-                        magicEngine.setFilter(MagicFilterType.HUDSON);
-                        break;
-                    case 30:
-                        magicEngine.setFilter(MagicFilterType.INKWELL);
-                        break;
-                    case 31:
-                        magicEngine.setFilter(MagicFilterType.KEVIN);
-                        break;
-                    case 32:
-                        magicEngine.setFilter(MagicFilterType.LOMO);
-                        break;
-                    case 33:
-                        magicEngine.setFilter(MagicFilterType.N1977);
-                        break;
-                    case 34:
-                        magicEngine.setFilter(MagicFilterType.NASHVILLE);
-                        break;
-                    case 35:
-                        magicEngine.setFilter(MagicFilterType.PIXAR);
-                        break;
-                    case 36:
-                        magicEngine.setFilter(MagicFilterType.RISE);
-                        break;
-                    case 37:
-                        magicEngine.setFilter(MagicFilterType.SIERRA);
-                        break;
-                    case 38:
-                        magicEngine.setFilter(MagicFilterType.SUTRO);
-                        break;
-                    case 39:
-                        magicEngine.setFilter(MagicFilterType.TOASTER2);
-                        break;
-                    case 40:
-                        magicEngine.setFilter(MagicFilterType.VALENCIA);
-                        break;
-                    case 41:
-                        magicEngine.setFilter(MagicFilterType.WALDEN);
-                        break;
-
-                    case 42:
-                        magicEngine.setFilter(MagicFilterType.XPROII);
-                        break;
-
-
-
-
-
-                }
+        if (mCameraParam.supportFlash) {
+            boolean flashLightOn = CameraEngine.getInstance().isFlashLightOn();
+            flashOn = !flashLightOn;
+            CameraEngine.getInstance().setFlashLight(flashOn);
+            if (flashOn) {
+                iv_flash_light.setImageResource(R.mipmap.iv_flash_on);
+            } else {
+                iv_flash_light.setImageResource(R.mipmap.iv_flash_off);
             }
-        });
-        dialogFilter.show();
-//        if (isOpen) {
-//            filterView.setImageResource(R.drawable.filter_close);
-//            magicEngine.setFilter(MagicFilterType.NONE);
-//            isOpen = false;
-//        } else {
-//            filterView.setImageResource(R.drawable.filter_open);
-//            magicEngine.setFilter(MagicFilterType.BEAUTY);
-//            isOpen = true;
-//        }
+        }
     }
 
     private void switchCamera() {
-        magicEngine.switchCamera();
-        flashControlView.setImageResource(R.drawable.light_ic_off);
-    }
-
-    private void closeAll() {
-        stopRecording();
-        mediaObject.clearAll(false);
-        finish();
+        mPreviewPresenter.switchCamera();
+        iv_flash_light.setImageResource(R.mipmap.iv_flash_off);
     }
 
     private void switchRecordStatus() {
-
-        if (mMuxer != null) {
-            stopRecording();
-            resetViewStatus();
+        ll_filter.setVisibility(View.GONE);
+        ll_beauty.setVisibility(View.GONE);
+        ll_select_video.setVisibility(View.GONE);
+        ll_camera_control.setVisibility(View.GONE);
+        if (mPreviewPresenter.isRecording()) {
+            //暂停录制
+            iv_delete_last.setVisibility(View.VISIBLE);
+            iv_close.setVisibility(View.VISIBLE);
+            iv_complete_record.setVisibility(View.VISIBLE);
+            iv_record_video.setImageResource(R.mipmap.iv_record_video);
+            mPreviewPresenter.stopRecord();
+            progressView.stop();
         } else {
-            startRecording();
-            showCaptureViewStatus();
-            resetStopStatus();
+            //开始录制
+            iv_delete_last.setVisibility(View.GONE);
+            iv_close.setVisibility(View.GONE);
+            iv_complete_record.setVisibility(View.GONE);
+            iv_record_video.setImageResource(R.mipmap.iv_recording_video);
+
+            int width = mCameraParam.DEFAULT_9_16_WIDTH;
+            int height = mCameraParam.DEFAULT_9_16_HEIGHT;
+            videoPath = getOutPutPath();
+            progressView.start();
+            mPreviewPresenter.startRecord(width, height, videoPath);
         }
-
     }
-
-    private <E extends View> E findById(int resId) {
-        return (E) findViewById(resId);
-    }
-
 
     @Override
     protected void onPause() {
@@ -537,110 +577,45 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         resetViewStatus();
     }
 
-    //=========================camera filter===========================================
-
-    private MagicEngine magicEngine;
-
-    private void initMagicEngine() {
-        MagicEngine.Builder builder = new MagicEngine.Builder();
-        magicEngine = builder.build((MagicCameraView)findViewById(R.id.magic_camera_view));
-    }
-
-    private MediaMuxerWrapper mMuxer;
-
-    String recordVideoPath;
-
-    MediaObject mediaObject = new MediaObject();
-    private void startRecording() {
-        recordVideoPath = pathEx + getDateTimeString() + ".mp4";
-
-        File file = new File(pathEx);
-        if (!file.exists()) {
-            file.mkdirs();
-        }
-
-        mediaObject.buildMediaPart(recordVideoPath);
-
-        try {
-            mMuxer = new MediaMuxerWrapper(recordVideoPath);
-            if (true) {
-                //TODO 配置录制文件的大小,此处录制大小需要和camera预览分辨率一致
-                new MediaVideoEncoder(mMuxer, mMediaEncoderListener, CAMERA_WIDTH, CAMERA_HEIGHT);
-            }
-
-            if (true) {
-                new MediaAudioEncoder(mMuxer, mMediaEncoderListener);
-            }
-            mMuxer.prepare();
-            mMuxer.startRecording();
-        } catch (final IOException e) {
-            Log.i(TAG, "startCapture:", e);
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (flashOn){
+            CameraEngine.getInstance().setFlashLight(!flashOn);
+            iv_flash_light.setImageResource(R.mipmap.iv_flash_off);
         }
     }
 
-    private static final SimpleDateFormat mDateTimeFormat = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.US);
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (isCanChangeSize) {
+            mCameraParam.backCamera = !mCameraParam.backCamera;
+            mPreviewPresenter.switchCamera();
 
-    private static final String getDateTimeString() {
-        final GregorianCalendar now = new GregorianCalendar();
-        return mDateTimeFormat.format(now.getTime());
-    }
-
-    /**
-     * request stop recording
-     */
-    private void stopRecording() {
-        Log.i(TAG, "stopRecording:mMuxer=" + mMuxer);
-        if (mMuxer != null) {
-            mMuxer.stopRecording();
-            mMuxer = null;
-        }
-    }
-
-    boolean isAudioStopped;
-    boolean isVideoStopped;
-
-    /**
-     * 编码器的回调
-     */
-    private final MediaEncoder.MediaEncoderListener mMediaEncoderListener = new MediaEncoder.MediaEncoderListener() {
-        @Override
-        public void onPrepared(final MediaEncoder encoder) {
-            Log.i(TAG, "onPrepared:encoder=" + encoder);
-            if (encoder instanceof MediaVideoEncoder)
-                cameraView.setVideoEncoder((MediaVideoEncoder)encoder);
-        }
-
-        @Override
-        public void onStopped(final MediaEncoder encoder) {
-            Log.i(TAG, "onStopped:encoder=" + encoder);
-            if (encoder instanceof MediaVideoEncoder) {
-                cameraView.setVideoEncoder(null);
-                isVideoStopped = true;
-            } else if (encoder instanceof MediaAudioEncoder){
-                isAudioStopped = true;
-            }
-
-            //只有video和audio都结束，才表示视频录制完成
-            if (isFinishCapture && isAudioStopped && isVideoStopped) {
-                mergeVideo();
+            if (flashOn){
+                iv_flash_light.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        CameraEngine.getInstance().setFlashLight(flashOn);
+                        iv_flash_light.setImageResource(R.mipmap.iv_flash_on);
+                    }
+                }, 500);
             }
         }
-    };
-
-    private void mergeVideo() {
-        if (mediaObject.getMedaParts().size() > 1) {
-            outName = pathEx + suffix;
-            mp4ParserMerge();
-        } else {
-            outName = mediaObject.getMedaParts().get(0).mediaPath;
-            mediaObject.clearAll(false);
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    startPreviewActivity();
-                }
-            });
-        }
+        isCanChangeSize = true;
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mPreviewPresenter.removeAllSubVideo();
+        PreviewRenderer.getInstance().stopRecording();
+        CameraEngine.getInstance().releaseCamera();
+
+        mPreviewPresenter.onDestroy();
+        mPreviewPresenter.onDetach();
+        mPreviewPresenter = null;
+        cancelDelayRecordTask();
+    }
 }

@@ -2,22 +2,22 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:orientation="horizontal">
+    android:layout_marginRight="10dp"
+    android:orientation="vertical"
+    android:gravity="center">
 
-    <View
-        android:layout_width="1dp"
-        android:layout_height="match_parent"
-        android:background="@color/gray"
-        android:layout_marginTop="20dp"
-        android:layout_marginBottom="20dp"
-        />
+    <ImageView
+        android:id="@+id/iv_sticker"
+        android:layout_width="60dp"
+        android:layout_height="60dp" />
+
     <TextView
         android:id="@+id/tv_filter_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="@android:color/black"
-        android:textSize="18sp"
-        android:padding="30dp"/>
+        android:textSize="13sp"
+        android:textColor="#B3FFFFFF"
+        android:layout_marginTop="5dp"/>
 
 
 </LinearLayout>

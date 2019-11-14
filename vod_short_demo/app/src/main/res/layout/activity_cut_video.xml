@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <RelativeLayout
+            android:id="@+id/rl_video"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_weight="1">
+
+            <TextureView
+                android:id="@+id/tv_video"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true" />
+
+            <bokecc.shortvideosdk.widget.CutView
+                android:id="@+id/cv_view"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
+
+        </RelativeLayout>
+
+
+        <LinearLayout
+            android:id="@+id/ll_cut_and_speed"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/black"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/ll_edit_ratio"
+                android:layout_width="240dp"
+                android:layout_height="30dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="3dp"
+                android:background="@drawable/cut_rate_corner_bac_normal"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tv_original_rate"
+                    style="@style/tv_cut_video_size"
+                    android:text="原比例" />
+
+                <TextView
+                    android:id="@+id/tv_one_to_one"
+                    style="@style/tv_cut_video_size"
+                    android:text="1:1" />
+
+                <TextView
+                    android:id="@+id/tv_four_to_three"
+                    style="@style/tv_cut_video_size"
+                    android:text="4:3" />
+
+                <TextView
+                    android:id="@+id/tv_sixteen_to_nine"
+                    style="@style/tv_cut_video_size"
+                    android:text="16:9" />
+
+                <TextView
+                    android:id="@+id/tv_nine_to_sixteen"
+                    style="@style/tv_cut_video_size"
+                    android:text="9:16" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/ll_edit_speed"
+                android:layout_width="300dp"
+                android:layout_height="30dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="3dp"
+                android:background="@drawable/cut_rate_corner_bac_normal"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/tv_extreme_slow"
+                    style="@style/tv_cut_video_size"
+                    android:text="极慢" />
+
+                <TextView
+                    android:id="@+id/tv_slow"
+                    style="@style/tv_cut_video_size"
+                    android:text="慢" />
+
+                <TextView
+                    android:id="@+id/tv_standard"
+                    style="@style/tv_cut_video_size"
+                    android:text="标准" />
+
+                <TextView
+                    android:id="@+id/tv_high"
+                    style="@style/tv_cut_video_size"
+                    android:text="快" />
+
+                <TextView
+                    android:id="@+id/tv_extreme_high"
+                    style="@style/tv_cut_video_size"
+                    android:text="极快" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:background="@color/cutRateBacColor"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1" />
+
+                <ImageView
+                    android:id="@+id/iv_cut_ratio"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:src="@mipmap/iv_sixteen_nine_checked" />
+
+                <ImageView
+                    android:id="@+id/iv_edit_speed"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:layout_marginLeft="10dp"
+                    android:layout_marginRight="10dp"
+                    android:src="@mipmap/iv_speed_off" />
+
+
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_selected_time"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:gravity="center"
+                android:textColor="@color/white"
+                android:textSize="13sp" />
+
+            <bokecc.shortvideosdk.widget.DurView
+                android:id="@+id/dv_view"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="27dp"
+                android:layout_marginTop="6dp"
+                android:layout_marginRight="27dp">
+
+            </bokecc.shortvideosdk.widget.DurView>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="59dp"
+                android:layout_marginTop="10dp"
+                android:layout_marginRight="59dp"
+                android:layout_marginBottom="27dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tv_cut_start_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0s"
+                    android:textColor="@color/white"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1" />
+
+                <TextView
+                    android:id="@+id/tv_cut_end_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="10s"
+                    android:textColor="@color/white"
+                    android:textSize="13sp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="12dp"
+        android:layout_marginTop="15dp"
+        android:layout_marginRight="12dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/iv_back"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@mipmap/iv_back" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/tv_next"
+            android:layout_width="59dp"
+            android:layout_height="26dp"
+            android:background="@drawable/orange_corner_bac"
+            android:gravity="center"
+            android:text="下一步"
+            android:textColor="@color/white"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+
+</RelativeLayout>

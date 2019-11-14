@@ -11,12 +11,14 @@ import android.widget.ImageView;
 import java.util.ArrayList;
 
 import bokecc.shortvideosdk.R;
+import bokecc.shortvideosdk.util.MultiUtils;
+import bokecc.shortvideosdk.widget.DurView;
 
 
 public class DurAdapter extends RecyclerView.Adapter<DurAdapter.ViewHolder> {
     private final Context mContext;
     private ArrayList<Bitmap> data = new ArrayList<Bitmap>();
-
+    private int previewImgHeight = 60;
     public DurAdapter(Context context) {
         mContext = context;
     }
@@ -27,7 +29,7 @@ public class DurAdapter extends RecyclerView.Adapter<DurAdapter.ViewHolder> {
         int padding = mContext.getResources().getDimensionPixelOffset(R.dimen.activity_horizontal_margin);
         int screenWidth = mContext.getResources().getDisplayMetrics().widthPixels;
         final int itemWidth = (screenWidth - 2 * padding) / itemCount;
-        int height = mContext.getResources().getDimensionPixelOffset(R.dimen.ugc_item_thumb_height);
+        int height = MultiUtils.dipToPx(parent.getContext(),previewImgHeight);
 //        int height = (int) (itemWidth / VideoCropHelper.WHA);
         ImageView view = new ImageView(parent.getContext());
         view.setLayoutParams(new ViewGroup.LayoutParams(itemWidth, height));

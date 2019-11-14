@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ShortVideoSDK</string>
+    <string name="app_name">短视频</string>
     <string name="video_edit_segment">设置想要截取的片段</string>
     <string name="settings">设置</string>
     <string name="help">帮助</string>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/editBubbleTextBac"
+    android:orientation="horizontal"
+    android:paddingTop="7dp"
+    android:paddingBottom="7dp"
+    android:gravity="center_vertical">
+
+    <EditText
+        android:id="@+id/et_bubble_text"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_weight="1"
+        android:background="@drawable/white_corner_bac"
+        android:textColor="@color/editBubbleTextColor"
+        android:textSize="14sp"
+        android:padding="10dp"/>
+
+    <TextView
+        android:id="@+id/tv_sure"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="确定"
+        android:textSize="14sp"
+        android:textColor="@color/white"
+        android:paddingLeft="8dp"
+        android:paddingRight="8dp"
+        android:paddingTop="11dp"
+        android:paddingBottom="11dp"
+        android:gravity="center"
+        android:background="@drawable/orange_five_corner_bac"
+        android:layout_marginRight="10dp"/>
+
+
+</LinearLayout>

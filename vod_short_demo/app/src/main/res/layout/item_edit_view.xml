@@ -6,7 +6,7 @@
 
     <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="70dp"
+        android:layout_height="60dp"
         android:layout_below="@+id/tv_tip"
         android:layout_marginLeft="8dp"
         android:layout_marginRight="8dp">
@@ -15,7 +15,7 @@
         <android.support.v7.widget.RecyclerView
             android:id="@+id/recycler_view"
             android:layout_width="match_parent"
-            android:layout_height="70dp"
+            android:layout_height="60dp"
             android:overScrollMode="never"
             android:paddingLeft="10dp"
             android:paddingRight="10dp" />
@@ -23,13 +23,13 @@
         <bokecc.shortvideosdk.cutvideo.TimeSliderView
             android:id="@+id/range_slider"
             android:layout_width="match_parent"
-            android:layout_height="66dp"
-            seekbar:leftThumbDrawable="@drawable/ic_progress_left"
+            android:layout_height="60dp"
+            seekbar:leftThumbDrawable="@mipmap/iv_left_thumb"
             seekbar:leftThumbIndex="0"
-            seekbar:lineColor="@color/white"
-            seekbar:lineHeight="3dp"
-            seekbar:rightThumbDrawable="@drawable/ic_progress_right"
-            seekbar:thumbWidth="19dp"
+            seekbar:lineColor="@color/mainColor"
+            seekbar:lineHeight="1dp"
+            seekbar:rightThumbDrawable="@mipmap/iv_right_thumb"
+            seekbar:thumbWidth="12dp"
             seekbar:tickCount="100" />
     </RelativeLayout>
 </merge>

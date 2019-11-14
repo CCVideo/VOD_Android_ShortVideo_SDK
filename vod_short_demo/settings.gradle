@@ -1,1 +1,1 @@
-include ':app', ':magicfilter'
+include ':app'

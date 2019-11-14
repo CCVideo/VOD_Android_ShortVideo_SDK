@@ -11,8 +11,16 @@
     <color name="camera_progress_overflow">#1b5d89</color>
     <color name="blue">#3394EC</color>
     <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
     <color name="gray">#2c2c2c</color>
-
     <color name="gray_text">#e6e6e6</color>
+    <color name="mainColor">#FF9520</color>
+    <color name="stickerBacColor">#CC212121</color>
+    <color name="cutRateBacColor">#FF212121</color>
+    <color name="editBubbleTextBac">#F8F8F8</color>
+    <color name="editBubbleTextColor">#333333</color>
+    <color name="musicBacColor">#0F0F1B</color>
+    <color name="sixtyWhite">#99FFFFFF</color>
+    <color name="transparent">#00000000</color>
 
 </resources>

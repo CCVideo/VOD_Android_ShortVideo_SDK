@@ -9,11 +9,14 @@ import android.util.AttributeSet;
 import android.view.View;
 
 
+import com.bokecc.camerafilter.camera.recordervideo.PreviewRecorder;
+import com.bokecc.camerafilter.camera.recordervideo.RecordItem;
+
 import java.util.Iterator;
+import java.util.LinkedList;
 
 import bokecc.shortvideosdk.R;
-import bokecc.shortvideosdk.model.MediaObject;
-import bokecc.shortvideosdk.util.DeviceUtils;
+import bokecc.shortvideosdk.util.MultiUtils;
 
 
 public class ProgressView extends View {
@@ -32,9 +35,12 @@ public class ProgressView extends View {
 	private Paint mOverflowPaint;
 	private boolean mStop, mProgressChanged;
 	private boolean mActiveState;
-	private MediaObject mMediaObject;
 	/** 最长时长 */
 	private int mMaxDuration, mVLineWidth;
+	private PreviewRecorder previewRecorder;
+	private int currentDuration,lastPauseRight = 0,lastPauseLeft = 0;
+	private RecordItem currentItem = new RecordItem();
+
 
 	public ProgressView(Context paramContext) {
 		super(paramContext);
@@ -60,25 +66,25 @@ public class ProgressView extends View {
 		mThreePaint = new Paint();
 		mOverflowPaint = new Paint();
 
-		mVLineWidth = DeviceUtils.dipToPX(getContext(), 1);
+		mVLineWidth = MultiUtils.dipToPx(getContext(), 1);
 
 		setBackgroundColor(getResources().getColor(R.color.camera_bg));
-		mProgressPaint.setColor(0xFF45C01A);
+		mProgressPaint.setColor(0xFFFF9520);
 		mProgressPaint.setStyle(Paint.Style.FILL);
 
 		mActivePaint.setColor(getResources().getColor(android.R.color.white));
 		mActivePaint.setStyle(Paint.Style.FILL);
 
 		mPausePaint.setColor(getResources().getColor(
-				R.color.camera_progress_split));
+				R.color.white));
 		mPausePaint.setStyle(Paint.Style.FILL);
 
 		mRemovePaint.setColor(getResources().getColor(
-				R.color.camera_progress_delete));
+				R.color.blue));
 		mRemovePaint.setStyle(Paint.Style.FILL);
 
 		mThreePaint.setColor(getResources().getColor(
-				R.color.camera_progress_three));
+				R.color.mainColor));
 		mThreePaint.setStyle(Paint.Style.FILL);
 
 		mOverflowPaint.setColor(getResources().getColor(
@@ -117,32 +123,24 @@ public class ProgressView extends View {
 
 		final int width = getMeasuredWidth(), height = getMeasuredHeight();
 		int left = 0, right = 0, duration = 0;
-		if (mMediaObject != null && mMediaObject.getMedaParts() != null) {
-
+		if (previewRecorder!=null && previewRecorder.getAllSubVideo() != null){
 			left = right = 0;
-			Iterator<MediaObject.MediaPart> iterator = mMediaObject
-					.getMedaParts().iterator();
+			LinkedList<RecordItem> allSubVideo = previewRecorder.getAllSubVideo();
+			Iterator<RecordItem> iterator = allSubVideo.iterator();
 			boolean hasNext = iterator.hasNext();
-
-			// final int duration = vp.getDuration();
 			int maxDuration = mMaxDuration;
 			boolean hasOutDuration = false;
-			int currentDuration = mMediaObject.getDuration();
 			hasOutDuration = currentDuration > mMaxDuration;
-
 			if (hasOutDuration)
 				maxDuration = currentDuration;
-
 			while (hasNext) {
-				MediaObject.MediaPart vp = iterator.next();
-				final int partDuration = vp.getDuration();
-				// Logger.e("[ProgressView]partDuration" + partDuration +
-				// " maxDuration:" + maxDuration);
+				RecordItem recordItem = iterator.next();
+				final int partDuration = recordItem.getDuration();
 				left = right;
 				right = left
 						+ (int) (partDuration * 1.0F / maxDuration * width);
 
-				if (vp.remove) {
+				if (recordItem.remove) {
 					// 回删
 					canvas.drawRect(left, 0.0F, right, height, mRemovePaint);
 				} else {
@@ -152,7 +150,7 @@ public class ProgressView extends View {
 						// 前段
 						right = left
 								+ (int) ((mMaxDuration - duration) * 1.0F
-										/ maxDuration * width);
+								/ maxDuration * width);
 						canvas.drawRect(left, 0.0F, right, height,
 								mProgressPaint);
 
@@ -160,7 +158,7 @@ public class ProgressView extends View {
 						left = right;
 						right = left
 								+ (int) ((partDuration - (mMaxDuration - duration))
-										* 1.0F / maxDuration * width);
+								* 1.0F / maxDuration * width);
 						canvas.drawRect(left, 0.0F, right, height,
 								mOverflowPaint);
 					} else {
@@ -171,25 +169,34 @@ public class ProgressView extends View {
 
 				hasNext = iterator.hasNext();
 				if (hasNext) {
-					// left = right - mVLineWidth;
 					canvas.drawRect(right - mVLineWidth, 0.0F, right, height,
 							mPausePaint);
 				}
 
 				duration += partDuration;
-				// progress = vp.progress;
 			}
+
+			if (previewRecorder.isRecording()){
+				lastPauseLeft = lastPauseRight - mVLineWidth;
+				if (lastPauseLeft>0){
+					canvas.drawRect(lastPauseLeft, 0.0F, lastPauseRight, height,
+							mPausePaint);
+				}
+
+				left = right;
+				int currentRecordItem = currentDuration - previewRecorder.getDuration();
+				right = left
+						+ (int) (currentRecordItem * 1.0F / maxDuration * width);
+				canvas.drawRect(left, 0.0F, right, height,
+						mProgressPaint);
+			}else {
+				lastPauseRight = right;
+			}
+
+
+
 		}
 
-		// 画三秒
-//		if (duration < mRecordTimeMin) {
-//			left = (int) ((mRecordTimeMin*1.0f )/ mMaxDuration * width);
-//			canvas.drawRect(left, 0.0F, left + mVLineWidth, height, mThreePaint);
-//		}
-
-		// 删
-		//
-		// 闪
 		if (mActiveState) {
 			if (right + 8 >= width)
 				right = width - 8;
@@ -212,12 +219,17 @@ public class ProgressView extends View {
 		mHandler.removeMessages(HANDLER_INVALIDATE_ACTIVE);
 	}
 
-	public void setData(MediaObject mMediaObject) {
-		this.mMediaObject = mMediaObject;
+	public void setData() {
+		previewRecorder = PreviewRecorder.getInstance();
 	}
 
 	public void setMaxDuration(int duration) {
 		this.mMaxDuration = duration;
+	}
+
+	public void setCurrentDuration(int duration) {
+		currentDuration = duration;
+		currentItem.duration = currentDuration - previewRecorder.getDuration();
 	}
 
 	public void start() {
@@ -227,8 +239,4 @@ public class ProgressView extends View {
 	public void stop() {
 		mProgressChanged = false;
 	}
-
-//	public void setMinTime(int recordTimeMin) {
-//		this.mRecordTimeMin=recordTimeMin;
-//	}
 }

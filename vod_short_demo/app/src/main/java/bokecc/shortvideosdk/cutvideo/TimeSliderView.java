@@ -15,7 +15,7 @@ import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 
 import bokecc.shortvideosdk.R;
-
+import bokecc.shortvideosdk.util.MultiUtils;
 
 
 public class TimeSliderView extends ViewGroup {
@@ -48,7 +48,7 @@ public class TimeSliderView extends ViewGroup {
     private boolean mIsDraggingPreviewLine;
 
     float rectLeft = 100;
-    float previewLineWidth = 30;
+    float previewLineWidth = 12;
     float rectRight = rectLeft + previewLineWidth;
     float rectTop;
     float rectBottom;
@@ -65,6 +65,9 @@ public class TimeSliderView extends ViewGroup {
 
     public TimeSliderView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
+
+        //预览线宽度
+        previewLineWidth = MultiUtils.dipToPx(context, 4);
 
         TypedArray array = context.obtainStyledAttributes(attrs, R.styleable.TimeSliderView, 0, 0);
         mThumbWidth = array.getDimensionPixelOffset(R.styleable.TimeSliderView_thumbWidth, DEFAULT_THUMB_WIDTH);
@@ -144,6 +147,16 @@ public class TimeSliderView extends ViewGroup {
         moveThumbByIndex(mRightThumb, mRightThumb.getRangeIndex());
     }
 
+
+    public void moveThumbPosition(int left,int right) {
+        mLeftThumb.setTickIndex(left);
+        moveThumbByIndex(mLeftThumb, mLeftThumb.getRangeIndex());
+        invalidate();
+        mRightThumb.setTickIndex(right);
+        moveThumbByIndex(mRightThumb, mRightThumb.getRangeIndex());
+        invalidate();
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
         final int width = getMeasuredWidth();
@@ -168,7 +181,7 @@ public class TimeSliderView extends ViewGroup {
         rectBottom = height;
         if (rectLeft <= lThumbWidth + lThumbOffset) {
             rectLeft = lThumbWidth + lThumbOffset;
-            rectRight = rectLeft+previewLineWidth;
+            rectRight = rectLeft + previewLineWidth;
         }
         if (rectRight > rThumbOffset) {
             rectRight = rThumbOffset;
@@ -267,7 +280,7 @@ public class TimeSliderView extends ViewGroup {
                         final int lThumbWidth = mLeftThumb.getMeasuredWidth();
                         final float lThumbOffset = mLeftThumb.getX();
                         rectLeft = lThumbWidth + lThumbOffset;
-                        rectRight = rectLeft+previewLineWidth;
+                        rectRight = rectLeft + previewLineWidth;
                         invalidate();
                     } else if (mRightThumb.isPressed()) {
                         getParent().requestDisallowInterceptTouchEvent(true);
@@ -286,10 +299,10 @@ public class TimeSliderView extends ViewGroup {
                     rectLeft = rectLeft + moveX;
                     rectRight = rectLeft + previewLineWidth;
                     invalidate();
-                    if (mRangeChangeListener!=null){
+                    if (mRangeChangeListener != null) {
                         int rangeIndex = mRightThumb.getRangeIndex();
                         float x1 = mRightThumb.getX();
-                        int previewIndex = (int) (rangeIndex * rectLeft /x1);
+                        int previewIndex = (int) (rangeIndex * rectLeft / x1);
                         mRangeChangeListener.onPreviewLineMove(previewIndex);
                     }
                 }
@@ -384,6 +397,7 @@ public class TimeSliderView extends ViewGroup {
                 mRightThumb.setTickIndex(rightIndex);
             }
         }
+
     }
 
     private boolean moveThumbByIndex(ThumbView view, int index) {
