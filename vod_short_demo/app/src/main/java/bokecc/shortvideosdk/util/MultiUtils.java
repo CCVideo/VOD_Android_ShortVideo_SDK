@@ -186,6 +186,12 @@ public class MultiUtils {
         return bigDecimal1.divide(bigDecimal2, scale, BigDecimal.ROUND_HALF_UP).floatValue();
     }
 
+    public static float calTimeRatio(int scale, float num1, float num2) {
+        BigDecimal bigDecimal1 = new BigDecimal(String.valueOf(num1));
+        BigDecimal bigDecimal2 = new BigDecimal(String.valueOf(num2));
+        return bigDecimal1.divide(bigDecimal2, scale, BigDecimal.ROUND_HALF_UP).floatValue();
+    }
+
     /**
      * 判断sd卡是否可以用
      */

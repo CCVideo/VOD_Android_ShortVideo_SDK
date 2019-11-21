@@ -42,7 +42,6 @@ public class UploadActivity extends Activity {
     private List<StickerSet> stickerSets;
     private ImageView iv_back;
 
-
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);

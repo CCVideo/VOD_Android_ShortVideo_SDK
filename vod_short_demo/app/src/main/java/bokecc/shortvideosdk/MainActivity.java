@@ -12,6 +12,8 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -41,11 +43,12 @@ import bokecc.shortvideosdk.presenter.CameraPreviewPresenter;
 import bokecc.shortvideosdk.util.FileUtils;
 import bokecc.shortvideosdk.util.MultiUtils;
 import bokecc.shortvideosdk.widget.BeautyDialog;
+import bokecc.shortvideosdk.widget.CustomProgressDialog;
 import bokecc.shortvideosdk.widget.FilterDialog;
 import bokecc.shortvideosdk.widget.ProgressView;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener{
-    private ImageView iv_flash_light, switchCameraView,iv_record_video, iv_complete_record,
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+    private ImageView iv_flash_light, switchCameraView, iv_record_video, iv_complete_record,
             iv_delete_last, iv_beauty, iv_countdown_time, iv_countdown, iv_close;
     private ProgressView progressView;
     private String videoPath, dirName = "AHuodeShortVideo";
@@ -68,6 +71,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private boolean isCanChangeSize = false;
     private int focusSize = 120;
 
+    private IsCanCombineTask isCanCombineTask;
+    private Timer isCanCombineTimer;
+    private CustomProgressDialog customProgressDialog;
+    private boolean isCombineVideo = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -84,10 +92,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mCameraParam = CameraParam.getInstance();
         mPreviewPresenter = new CameraPreviewPresenter(this);
         mPreviewPresenter.onAttach(activity);
+
+
     }
 
 
     private void initView() {
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         //预览画面
         afl_layout = findViewById(R.id.afl_layout);
         cameraTextureView = new CameraTextureView(activity);
@@ -137,7 +148,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         ll_camera_control = findViewById(R.id.ll_camera_control);
         progressView.setData();
         progressView.setMaxDuration(CameraParam.DEFAULT_RECORD_TIME);
-
+        PreviewRecorder.getInstance().setRecordTime(CameraParam.DEFAULT_RECORD_TIME);
     }
 
     /**
@@ -186,7 +197,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void updateRecordProgress(long duration) {
         progressView.setCurrentDuration((int) duration);
         if (duration >= CameraParam.DEFAULT_RECORD_TIME) {
-            combineVideo();
+            mPreviewPresenter.stopRecord();
+            startIsCanCombineTimer();
             tv_record_time.setVisibility(View.GONE);
         } else {
             int recordTime = (int) (duration / 1000);
@@ -224,11 +236,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 deleteLastVideo();
                 break;
             case R.id.iv_complete_record:
-                if (mPreviewPresenter.isRecording()) {
-                    MultiUtils.showToast(activity, "请稍候");
-                } else {
-                    combineVideo();
+                if (!(iv_delete_last.getVisibility() == View.VISIBLE)) {
+                    mPreviewPresenter.stopRecord();
                 }
+                startIsCanCombineTimer();
                 break;
             case R.id.iv_flash_light:
                 switchFlash();
@@ -446,10 +457,49 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
+    private void startIsCanCombineTimer() {
+        isCombineVideo = false;
+        cancelIsCanCombineTimer();
+        customProgressDialog = new CustomProgressDialog(activity);
+        customProgressDialog.setCanceledOnTouchOutside(false);
+        customProgressDialog.show();
+
+        isCanCombineTimer = new Timer();
+        isCanCombineTask = new IsCanCombineTask();
+        isCanCombineTimer.schedule(isCanCombineTask, 0, 30);
+    }
+
+
+    private void cancelIsCanCombineTimer() {
+
+        if (isCanCombineTimer != null) {
+            isCanCombineTimer.cancel();
+        }
+        if (isCanCombineTask != null) {
+            isCanCombineTask.cancel();
+        }
+    }
+
+
+    class IsCanCombineTask extends TimerTask {
+        @Override
+        public void run() {
+            activity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (!mPreviewPresenter.isRecording() && !isCombineVideo) {
+                        cancelIsCanCombineTimer();
+                        isCombineVideo = true;
+                        combineVideo();
+                    }
+                }
+            });
+        }
+    }
+
 
     //合成视频
     public void combineVideo() {
-        mPreviewPresenter.stopRecord();
         mPreviewPresenter.destroyRecorder();
         //分段视频的数量
         int numberOfSubVideo = mPreviewPresenter.getNumberOfSubVideo();
@@ -471,12 +521,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private VideoCombiner.CombineListener mCombineListener = new VideoCombiner.CombineListener() {
         @Override
         public void onCombineStart() {
-            activity.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    MultiUtils.showToast(activity, "处理中，请稍候");
-                }
-            });
+
         }
 
         @Override
@@ -513,6 +558,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void intoEditActivity() {
+
+        if (customProgressDialog != null && customProgressDialog.isShowing()) {
+            customProgressDialog.dismiss();
+            customProgressDialog = null;
+        }
+
         if (mCameraParam.supportFlash) {
             CameraEngine.getInstance().setFlashLight(false);
         }
@@ -560,7 +611,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             //开始录制
             iv_delete_last.setVisibility(View.GONE);
             iv_close.setVisibility(View.GONE);
-            iv_complete_record.setVisibility(View.GONE);
+            iv_complete_record.setVisibility(View.VISIBLE);
             iv_record_video.setImageResource(R.mipmap.iv_recording_video);
 
             int width = mCameraParam.DEFAULT_9_16_WIDTH;
@@ -580,7 +631,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onStop() {
         super.onStop();
-        if (flashOn){
+        if (flashOn) {
             CameraEngine.getInstance().setFlashLight(!flashOn);
             iv_flash_light.setImageResource(R.mipmap.iv_flash_off);
         }
@@ -593,7 +644,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             mCameraParam.backCamera = !mCameraParam.backCamera;
             mPreviewPresenter.switchCamera();
 
-            if (flashOn){
+            if (flashOn) {
                 iv_flash_light.postDelayed(new Runnable() {
                     @Override
                     public void run() {
@@ -617,5 +668,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mPreviewPresenter.onDetach();
         mPreviewPresenter = null;
         cancelDelayRecordTask();
+        cancelIsCanCombineTimer();
     }
 }

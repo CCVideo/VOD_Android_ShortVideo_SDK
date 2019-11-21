@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.SurfaceTexture;
 import android.os.Bundle;
+import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
@@ -47,12 +48,12 @@ public class CutVideoActivity extends Activity implements View.OnClickListener, 
     private RelativeLayout rl_video;
     private int videoWidth, videoHeight, leftMargin, topMargin, rightMargin, bottomMargin,
             windowWidth, windowHeight, afterChangeVideoHeight, startCutTime, endCutTime,
-            startCutShowTime, endCutShowTime, selectCutShowTime, afterChangeVideoWidth;
+            standardStartTime, standardEndTime, startCutShowTime, endCutShowTime, selectCutShowTime, afterChangeVideoWidth;
 
     private int videoDuration, currentRatio = 2;
     private IjkMediaPlayer videoPlayer;
     private LinearLayout ll_cut_and_speed, ll_edit_ratio, ll_edit_speed;
-    private boolean isEditVideoSpeed = false, isChangeVideoTime = false;
+    private boolean isEditVideoSpeed = false, isChangeVideoTime = false, isCutVideoSize = false;
     private float videoSpeed = 1.0f;
     private CustomProgressDialog handleProgressDialog;
 
@@ -115,6 +116,15 @@ public class CutVideoActivity extends Activity implements View.OnClickListener, 
         tv_high.setOnClickListener(this);
         tv_extreme_high = findViewById(R.id.tv_extreme_high);
         tv_extreme_high.setOnClickListener(this);
+
+        cv_view.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                isCutVideoSize = true;
+                return false;
+            }
+        });
+
     }
 
 
@@ -138,9 +148,9 @@ public class CutVideoActivity extends Activity implements View.OnClickListener, 
                     videoDuration = (int) videoPlayer.getDuration();
 
                     videoSpeed = 1.0f;
-                    tv_selected_time.setText("已选取" + (videoDuration / 1000) + "s");
-                    tv_cut_start_time.setText("0s");
-                    tv_cut_end_time.setText((videoDuration / 1000) + "s");
+                    standardStartTime = 0;
+                    standardEndTime = (int) videoPlayer.getDuration();
+                    setSelectTime();
 
                     //获取视频的宽和高
                     if (rotation == 90 || rotation == 270) {
@@ -151,7 +161,6 @@ public class CutVideoActivity extends Activity implements View.OnClickListener, 
                         videoHeight = videoPlayer.getVideoHeight();
                     }
 
-                    endCutTime = (int) videoPlayer.getDuration();
                     afterChangeVideoHeight = videoHeight * windowWidth / videoWidth;
 
                     //设置视频的宽和高
@@ -173,9 +182,21 @@ public class CutVideoActivity extends Activity implements View.OnClickListener, 
                         layoutParams.width = afterChangeVideoWidth;
                         layoutParams.height = maxVideoHeight;
                         rl_video.setLayoutParams(layoutParams);
+
+                        ViewGroup.LayoutParams layoutParams1 = cv_view.getLayoutParams();
+                        layoutParams1.width = afterChangeVideoWidth;
+                        layoutParams1.height = maxVideoHeight;
+                        cv_view.setLayoutParams(layoutParams1);
+
+                        ViewGroup.LayoutParams layoutParams2 = tv_video.getLayoutParams();
+                        layoutParams2.width = afterChangeVideoWidth;
+                        layoutParams2.height = maxVideoHeight;
+                        tv_video.setLayoutParams(layoutParams2);
+
                     }
                     leftMargin = 0;
                     rightMargin = 0;
+
                     topMargin = (windowHeight - height - afterChangeVideoHeight) / 2;
                     bottomMargin = topMargin;
                     cv_view.setMargin(leftMargin, topMargin, rightMargin, bottomMargin);
@@ -201,10 +222,10 @@ public class CutVideoActivity extends Activity implements View.OnClickListener, 
                 handleProgressDialog = new CustomProgressDialog(activity);
                 handleProgressDialog.show();
                 if (videoSpeed == 1.0f) {
-                    if (currentRatio == 4 && !isChangeVideoTime) {
-                        changeVideoSize();
-                    } else {
+                    if (isCutVideoSize || isChangeVideoTime) {
                         cutVideo(false);
+                    } else {
+                        changeVideoSize();
                     }
                 } else {
                     changeSpeed();
@@ -268,7 +289,6 @@ public class CutVideoActivity extends Activity implements View.OnClickListener, 
         }
     }
 
-
     private void getVideoRotation() {
         VideoBean localVideoInfo = MultiUtils.getLocalVideoInfo(videoPath);
         rotation = localVideoInfo.rotation;
@@ -287,13 +307,11 @@ public class CutVideoActivity extends Activity implements View.OnClickListener, 
             public void onFinish() {
                 videoPath = outPutChangeSpeedPath;
                 getVideoRotation();
-                if (currentRatio == 4) {
-                    changeVideoSize();
-                } else {
+                if (isCutVideoSize || isChangeVideoTime) {
                     cutVideo(true);
+                } else {
+                    changeVideoSize();
                 }
-
-
             }
 
             @Override
@@ -324,6 +342,7 @@ public class CutVideoActivity extends Activity implements View.OnClickListener, 
     private void setCutRation(int ratioFlag) {
         cv_view.setVisibility(View.VISIBLE);
         currentRatio = ratioFlag;
+        isCutVideoSize = true;
         tv_original_rate.setBackgroundColor(getResources().getColor(R.color.transparent));
         tv_one_to_one.setBackgroundColor(getResources().getColor(R.color.transparent));
         tv_four_to_three.setBackgroundColor(getResources().getColor(R.color.transparent));
@@ -346,6 +365,7 @@ public class CutVideoActivity extends Activity implements View.OnClickListener, 
             iv_cut_ratio.setImageResource(R.mipmap.iv_nine_sixteen_checked);
             tv_nine_to_sixteen.setBackgroundResource(R.drawable.orange_fifteen_corner_bac);
         } else if (ratioFlag == 4) {
+            isCutVideoSize = false;
             cv_view.setCutRatio(videoWidth, videoHeight);
             iv_cut_ratio.setImageResource(R.mipmap.iv_original_rate_checked);
             tv_original_rate.setBackgroundResource(R.drawable.orange_fifteen_corner_bac);
@@ -378,7 +398,20 @@ public class CutVideoActivity extends Activity implements View.OnClickListener, 
         }
 
         videoPlayer.setSpeed(videoSpeed);
+        setSelectTime();
 
+    }
+
+    private void setSelectTime() {
+        float timeRatio = MultiUtils.calTimeRatio(2, 1.0f, videoSpeed);
+        startCutTime = (int) (timeRatio * standardStartTime);
+        endCutTime = (int) (timeRatio * standardEndTime);
+        startCutShowTime = startCutTime / 1000;
+        endCutShowTime = endCutTime / 1000;
+        selectCutShowTime = endCutShowTime - startCutShowTime;
+        tv_cut_start_time.setText(startCutShowTime + "s");
+        tv_cut_end_time.setText(endCutShowTime + "s");
+        tv_selected_time.setText("已选取" + selectCutShowTime + "s");
     }
 
     private void resetEditRatioImage() {
@@ -458,11 +491,11 @@ public class CutVideoActivity extends Activity implements View.OnClickListener, 
         int cropWidth = (int) (videoWidth * (rightPro - leftPro));
         int cropHeight = (int) (videoHeight * (bottomPro - topPro));
 
-        videoWidth = cropWidth;
-        videoHeight = cropHeight;
-
         int x = (int) (leftPro * videoWidth);
         int y = (int) (topPro * videoHeight);
+
+        videoWidth = cropWidth;
+        videoHeight = cropHeight;
 
         String outPutCutPath = MultiUtils.getOutPutVideoPath();
         ShortVideoHelper.cutVideo(activity, videoPath, outPutCutPath, startCutTime, endCutTime, cropWidth, cropHeight, x, y, new HandleProcessListener() {
@@ -540,14 +573,9 @@ public class CutVideoActivity extends Activity implements View.OnClickListener, 
     @Override
     public void onCutViewUp(int startTime, int endTime) {
         isChangeVideoTime = true;
-        startCutTime = startTime;
-        endCutTime = endTime;
-        startCutShowTime = startTime / 1000;
-        endCutShowTime = endTime / 1000;
-        selectCutShowTime = endCutShowTime - startCutShowTime;
-        tv_cut_start_time.setText(startCutShowTime + "s");
-        tv_cut_end_time.setText(endCutShowTime + "s");
-        tv_selected_time.setText("已选取" + selectCutShowTime + "s");
+        standardStartTime = startTime;
+        standardEndTime = endTime;
+        setSelectTime();
         videoPlayer.seekTo(startTime);
     }
 
