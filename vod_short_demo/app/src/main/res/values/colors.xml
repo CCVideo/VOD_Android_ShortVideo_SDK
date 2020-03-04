@@ -21,6 +21,8 @@
     <color name="editBubbleTextColor">#333333</color>
     <color name="musicBacColor">#0F0F1B</color>
     <color name="sixtyWhite">#99FFFFFF</color>
+    <color name="sixtyBlack">#99000000</color>
+    <color name="fiftyWhite">#80FFFFFF</color>
     <color name="transparent">#00000000</color>
 
 </resources>

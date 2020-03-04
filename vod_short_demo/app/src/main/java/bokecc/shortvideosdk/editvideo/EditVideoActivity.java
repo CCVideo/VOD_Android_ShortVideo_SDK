@@ -3,6 +3,8 @@ package bokecc.shortvideosdk.editvideo;
 import android.app.Activity;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.graphics.Rect;
 import android.graphics.SurfaceTexture;
 import android.graphics.drawable.Drawable;
@@ -107,6 +109,7 @@ public class EditVideoActivity extends Activity implements MediaPlayer.OnPrepare
     private Sticker currentSticker;
     private FrameLayout fl_sticker;
     private Surface surface;
+    private boolean isFromCombineImages = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -136,6 +139,7 @@ public class EditVideoActivity extends Activity implements MediaPlayer.OnPrepare
         isRecord = getIntent().getBooleanExtra("isRecord", false);
         originalPath = getIntent().getStringExtra("originalPath");
         originalRotation = getIntent().getIntExtra("originalRotation", 0);
+        isFromCombineImages = getIntent().getBooleanExtra("combineImages", false);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         stickers = new ArrayList<>();
@@ -1020,6 +1024,8 @@ public class EditVideoActivity extends Activity implements MediaPlayer.OnPrepare
         if (hideEditMusic()) return true;
         if (isRecord) {
             startActivity(new Intent(activity, MainActivity.class));
+        }else if(isFromCombineImages){
+
         } else {
             startActivity(new Intent(activity, CutVideoActivity.class).putExtra("videoPath", originalPath).putExtra("rotation", originalRotation));
         }
@@ -1035,5 +1041,14 @@ public class EditVideoActivity extends Activity implements MediaPlayer.OnPrepare
             return true;
         }
         return false;
+    }
+
+    @Override
+    public Resources getResources() {
+        Resources resources =  super.getResources();
+        Configuration configuration = new Configuration();
+        configuration.setToDefaults();
+        resources.updateConfiguration(configuration,resources.getDisplayMetrics());
+        return resources;
     }
 }

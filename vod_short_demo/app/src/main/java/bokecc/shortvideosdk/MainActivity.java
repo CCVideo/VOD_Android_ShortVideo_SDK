@@ -1,27 +1,24 @@
 package bokecc.shortvideosdk;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.SurfaceTexture;
-import android.hardware.Camera;
-import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.view.TextureView;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.bokecc.camerafilter.camera.engine.CameraEngine;
 import com.bokecc.camerafilter.camera.engine.CameraParam;
-import com.bokecc.camerafilter.camera.listener.OnRecordListener;
-import com.bokecc.camerafilter.camera.model.AspectRatio;
 import com.bokecc.camerafilter.camera.recordervideo.PreviewRecorder;
 import com.bokecc.camerafilter.camera.render.PreviewRenderer;
 import com.bokecc.camerafilter.camera.widget.AspectFrameLayout;
@@ -29,7 +26,6 @@ import com.bokecc.camerafilter.camera.widget.CameraTextureView;
 import com.bokecc.camerafilter.glfilter.color.bean.DynamicColor;
 import com.bokecc.camerafilter.glfilter.resource.FilterHelper;
 import com.bokecc.camerafilter.multimedia.VideoCombiner;
-import com.bokecc.shortvideo.videoedit.ShortVideoHelper;
 
 import java.io.File;
 import java.util.List;
@@ -39,6 +35,7 @@ import java.util.TimerTask;
 import bokecc.shortvideosdk.cutvideo.VideoBean;
 import bokecc.shortvideosdk.editvideo.CutVideoActivity;
 import bokecc.shortvideosdk.editvideo.EditVideoActivity;
+import bokecc.shortvideosdk.editvideo.SelectVideoOrImageActivity;
 import bokecc.shortvideosdk.presenter.CameraPreviewPresenter;
 import bokecc.shortvideosdk.util.FileUtils;
 import bokecc.shortvideosdk.util.MultiUtils;
@@ -75,6 +72,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Timer isCanCombineTimer;
     private CustomProgressDialog customProgressDialog;
     private boolean isCombineVideo = false;
+    private CloseReceiver closeReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -93,7 +91,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mPreviewPresenter = new CameraPreviewPresenter(this);
         mPreviewPresenter.onAttach(activity);
 
-
+        //注册广播
+        closeReceiver = new CloseReceiver();
+        IntentFilter intentFilter = new IntentFilter("bokecc.shortvideosdk.CLOSE_MAIN");
+        registerReceiver(closeReceiver, intentFilter);
     }
 
 
@@ -282,7 +283,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 beautyDialog.show();
                 break;
             case R.id.ll_select_video:
-                selectVideo();
+                startActivityForResult(new Intent(activity, SelectVideoOrImageActivity.class), SELECTVIDEOCODE);
                 break;
             case R.id.iv_countdown_time:
                 if (!isCanStartDelayRecord) {
@@ -373,25 +374,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-
-    //选择视频
-    private void selectVideo() {
-        Intent intent = null;
-        if (android.os.Build.VERSION.SDK_INT < 19) {
-            intent = new Intent(Intent.ACTION_GET_CONTENT);
-        } else {
-            intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-        }
-        intent.setType("video/*");
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-
-        try {
-            startActivityForResult(Intent.createChooser(intent, "请选择一个视频文件"), SELECTVIDEOCODE);
-        } catch (android.content.ActivityNotFoundException ex) {
-            MultiUtils.showToast(this, "请安装文件管理器");
-        }
-    }
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -399,14 +381,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             return;
         }
         if (requestCode == SELECTVIDEOCODE) {
-            Uri uri = data.getData();
-            if (Build.VERSION.SDK_INT >= 19) {
-                videoPath = MultiUtils.getPath_above19(activity, uri);
-            } else {
-                videoPath = MultiUtils.getFilePath_below19(activity, uri);
-            }
+            videoPath = data.getStringExtra("path");
 
-            if (videoPath == null) {
+            if (TextUtils.isEmpty(videoPath)) {
                 MultiUtils.showToast(activity, "文件有误，请重新选择");
                 return;
             }
@@ -657,6 +634,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         isCanChangeSize = true;
     }
 
+    class CloseReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            finish();
+        }
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -669,5 +654,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mPreviewPresenter = null;
         cancelDelayRecordTask();
         cancelIsCanCombineTimer();
+
+        if (closeReceiver != null) {
+            unregisterReceiver(closeReceiver);
+        }
     }
 }

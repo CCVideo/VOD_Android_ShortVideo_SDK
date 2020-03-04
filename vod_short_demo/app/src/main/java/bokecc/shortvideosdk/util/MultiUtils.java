@@ -1,48 +1,44 @@
 package bokecc.shortvideosdk.util;
 
-import android.annotation.TargetApi;
 import android.app.Activity;
-import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Environment;
-import android.os.storage.StorageManager;
-import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.Display;
-import android.view.View;
-import android.view.Window;
 import android.view.WindowManager;
+import android.widget.ImageView;
 import android.widget.Toast;
 
-import com.bokecc.camerafilter.media.VideoInfo;
+import com.bokecc.shortvideo.combineimages.model.SelectImageInfo;
+import com.bokecc.shortvideo.combineimages.model.SelectVideoInfo;
+import com.bumptech.glide.Glide;
 
 import java.io.File;
-import java.lang.reflect.Method;
 import java.math.BigDecimal;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 
+import bokecc.shortvideosdk.R;
+import bokecc.shortvideosdk.ShortVideoApplication;
 import bokecc.shortvideosdk.cutvideo.VideoBean;
+import bokecc.shortvideosdk.model.AnimRes;
 import bokecc.shortvideosdk.model.MusicInfo;
+import bokecc.shortvideosdk.model.TransitionRes;
 
 public class MultiUtils {
 
-    private static String DOWNLOAD_CONTENT = "content://downloads/public_downloads";
-
     public static String APP_FILE_PATH = "AHuodeShortVideo";
-
 
     public static void showToast(final Activity activity, final String content) {
         if (activity != null && !activity.isFinishing()) {
@@ -55,23 +51,17 @@ public class MultiUtils {
         }
     }
 
-    public static void setStatusBarColor(Activity activity, int color, boolean isDarkStatusBar) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            Window window = activity.getWindow();
-            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
-            int option;
-            if (isDarkStatusBar) {
-                option = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-            } else {
-                option = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
-            }
-            window.getDecorView().setSystemUiVisibility(option);
+    //显示图片
+    public static void loadUriImage(Uri uri, ImageView imageView) {
+        if (uri != null) {
+            Glide.with(ShortVideoApplication.getContext()).load(uri).into(imageView);
+        }
+    }
 
-            window.getDecorView().setSystemUiVisibility(option);
-            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-            window.setStatusBarColor(activity.getResources().getColor(color));
+    //显示图片
+    public static void loadPathImage(String path, ImageView imageView) {
+        if (!TextUtils.isEmpty(path)) {
+            Glide.with(ShortVideoApplication.getContext()).load(path).into(imageView);
         }
     }
 
@@ -98,28 +88,6 @@ public class MultiUtils {
         return info;
     }
 
-    /**
-     * 获取本地视频信息
-     */
-    public static VideoInfo getVideoInfo(String path) {
-        VideoInfo info = new VideoInfo();
-        info.path = path;
-        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
-        try {
-            mmr.setDataSource(path);
-            info.path = path;
-            info.duration = Integer.valueOf(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
-            info.bitRate = Integer.valueOf(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE));
-            info.width = Integer.valueOf(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH));
-            info.height = Integer.valueOf(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT));
-            info.rotation = Integer.valueOf(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION));
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            mmr.release();
-        }
-        return info;
-    }
 
     //设置为全屏
     public static void setFullScreen(Activity activity) {
@@ -132,29 +100,8 @@ public class MultiUtils {
     }
 
     //得到file
-    public static File getNewFile(Context context, String folderName,String stickerName) {
+    public static File getNewFile(Context context, String folderName, String stickerName) {
         String path;
-        if (isSDAvailable()) {
-            path = getFolderName(folderName) + File.separator + stickerName + ".png";
-        } else {
-            path = context.getFilesDir().getPath() + File.separator + stickerName + ".png";
-        }
-
-        if (TextUtils.isEmpty(path)) {
-            return null;
-        }
-
-        File saveFile = new File(path);
-        if (saveFile.exists()) {
-            saveFile.delete();
-        }
-
-        return saveFile;
-    }
-
-    public static File getNewFile(Context context, String folderName) {
-        String path;
-        String stickerName = "sticker";
         if (isSDAvailable()) {
             path = getFolderName(folderName) + File.separator + stickerName + ".png";
         } else {
@@ -220,28 +167,12 @@ public class MultiUtils {
             file.mkdirs();
         }
 
-        File outPutVideo = new File(outPath, System.currentTimeMillis()+".mp4");
+        File outPutVideo = new File(outPath, System.currentTimeMillis() + ".mp4");
         if (outPutVideo.exists()) {
             outPutVideo.delete();
         }
 
         return outPutVideo.getAbsolutePath();
-    }
-
-    //获得输出裁剪音乐的路径
-    public static String getOutPutMusicPath() {
-        String outPath = Environment.getExternalStorageDirectory().getPath() + File.separator + APP_FILE_PATH;
-        File file = new File(outPath);
-        if (!file.exists()) {
-            file.mkdirs();
-        }
-
-        File outPutMusic = new File(outPath, "outPutMusic.mp3");
-        if (outPutMusic.exists()) {
-            outPutMusic.delete();
-        }
-
-        return outPutMusic.getAbsolutePath();
     }
 
     //获得屏幕可用的宽度
@@ -251,6 +182,24 @@ public class MultiUtils {
         DisplayMetrics dm = new DisplayMetrics();
         display.getMetrics(dm);
         int height = dm.widthPixels;
+        return height;
+    }
+
+    //获得图片的宽度
+    public static int getImageWidth(String imagePath) {
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        Bitmap bmp = BitmapFactory.decodeFile(imagePath, options);
+        int width = options.outWidth;
+        return width;
+    }
+
+    //获得图片的高度
+    public static int getImageHeight(String imagePath) {
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        Bitmap bmp = BitmapFactory.decodeFile(imagePath, options);
+        int height = options.outHeight;
         return height;
     }
 
@@ -275,9 +224,9 @@ public class MultiUtils {
     }
 
     //删除文件
-    public static void deleteFile(String path){
+    public static void deleteFile(String path) {
         File file = new File(path);
-        if (file!=null && file.exists()){
+        if (file != null && file.exists()) {
             file.delete();
         }
     }
@@ -303,38 +252,159 @@ public class MultiUtils {
         return list;
     }
 
-    //先拷贝音乐，然后获得音乐路径
-    public static String getMusicPath(String originPath) {
-        String outPath = Environment.getExternalStorageDirectory().getPath() + File.separator + APP_FILE_PATH;
-        File file = new File(outPath);
-        if (!file.exists()) {
-            file.mkdirs();
+    //得到本地视频数据
+    public static List<SelectVideoInfo> getVideoDatas(Context context) {
+        List<SelectVideoInfo> datas = new ArrayList<>();
+        Cursor cursor = context.getContentResolver().query(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, null, null,
+                null, MediaStore.Video.VideoColumns.DATE_MODIFIED);
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                SelectVideoInfo selectVideoInfo = new SelectVideoInfo();
+                String id = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID));
+                Uri cover = Uri.withAppendedPath(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id);
+                selectVideoInfo.setCover(cover);
+                int videoTime = cursor.getInt(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION));
+                selectVideoInfo.setVideoTime(videoTime);
+                int videoSize = cursor.getInt(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE));
+                selectVideoInfo.setVideoSize(videoSize);
+                String path = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA));
+                selectVideoInfo.setPath(path);
+                long date = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_MODIFIED));
+                selectVideoInfo.setDate(date);
+                selectVideoInfo.setSelected(false);
+                datas.add(selectVideoInfo);
+            }
+            cursor.close();
         }
-
-        File music = new File(outPath, "music.mp3");
-        if (music.exists()) {
-            music.delete();
+        if (datas.size() > 0) {
+            Collections.sort(datas, new Comparator<SelectVideoInfo>() {
+                @Override
+                public int compare(SelectVideoInfo o1, SelectVideoInfo o2) {
+                    int rank = (int) (o2.getDate() - o1.getDate());
+                    return rank;
+                }
+            });
         }
-        String absolutePath = music.getAbsolutePath();
-        FileUtils.fileCopy(originPath, absolutePath);
-        return absolutePath;
+        return datas;
     }
 
-    //获得临时视频路径
-    public static String getTempVideoPath(String originPath) {
-        String outPath = Environment.getExternalStorageDirectory().getPath() + File.separator + APP_FILE_PATH;
-        File file = new File(outPath);
-        if (!file.exists()) {
-            file.mkdirs();
+    //得到本地图片数据
+    public static List<SelectImageInfo> getImageDatas(Context context) {
+        List<SelectImageInfo> datas = new ArrayList<>();
+        Cursor cursor = context.getContentResolver().query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, null, null,
+                null, MediaStore.Images.ImageColumns.DATE_MODIFIED);
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                SelectImageInfo selectImageInfo = new SelectImageInfo();
+                int imageSize = cursor.getInt(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.SIZE));
+                selectImageInfo.setSize(imageSize);
+                String path = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA));
+                selectImageInfo.setPath(path);
+                long date = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_MODIFIED));
+                selectImageInfo.setDate(date);
+                selectImageInfo.setSelected(false);
+                datas.add(selectImageInfo);
+            }
+            cursor.close();
         }
+        if (datas.size() > 0) {
+            Collections.sort(datas, new Comparator<SelectImageInfo>() {
+                @Override
+                public int compare(SelectImageInfo o1, SelectImageInfo o2) {
+                    int rank = (int) (o2.getDate() - o1.getDate());
+                    return rank;
+                }
+            });
+        }
+        return datas;
+    }
 
-        File tempVideo = new File(outPath, "tempVideo.mp4");
-        if (tempVideo.exists()) {
-            tempVideo.delete();
-        }
-        String absolutePath = tempVideo.getAbsolutePath();
-        FileUtils.fileCopy(originPath, absolutePath);
-        return absolutePath;
+    public static List<TransitionRes> getTransitionResDatas() {
+        List<TransitionRes> datas = new ArrayList<>();
+        TransitionRes transitionRes0 = new TransitionRes();
+        transitionRes0.setNormalImgRes(R.mipmap.iv_no_transition_normal);
+        transitionRes0.setSelectdImgRes(R.mipmap.iv_no_transition_selected);
+        transitionRes0.setSelected(true);
+        transitionRes0.setTransitionName("无");
+        transitionRes0.setTransitionType(0);
+        datas.add(transitionRes0);
+
+        TransitionRes transitionRes1 = new TransitionRes();
+        transitionRes1.setNormalImgRes(R.mipmap.iv_overlap_normal);
+        transitionRes1.setSelectdImgRes(R.mipmap.iv_overlap_selected);
+        transitionRes1.setSelected(false);
+        transitionRes1.setTransitionName("重叠");
+        transitionRes1.setTransitionType(1);
+        datas.add(transitionRes1);
+
+        TransitionRes transitionRes2 = new TransitionRes();
+        transitionRes2.setNormalImgRes(R.mipmap.iv_flash_black_normal);
+        transitionRes2.setSelectdImgRes(R.mipmap.iv_flash_black_selected);
+        transitionRes2.setSelected(false);
+        transitionRes2.setTransitionName("闪黑");
+        transitionRes2.setTransitionType(2);
+        datas.add(transitionRes2);
+
+        TransitionRes transitionRes3 = new TransitionRes();
+        transitionRes3.setNormalImgRes(R.mipmap.iv_flash_white_normal);
+        transitionRes3.setSelectdImgRes(R.mipmap.iv_flash_white_selected);
+        transitionRes3.setSelected(false);
+        transitionRes3.setTransitionName("闪白");
+        transitionRes3.setTransitionType(3);
+        datas.add(transitionRes3);
+
+        TransitionRes transitionRes4 = new TransitionRes();
+        transitionRes4.setNormalImgRes(R.mipmap.iv_circle_normal);
+        transitionRes4.setSelectdImgRes(R.mipmap.iv_circle_selected);
+        transitionRes4.setSelected(false);
+        transitionRes4.setTransitionName("圆形");
+        transitionRes4.setTransitionType(4);
+        datas.add(transitionRes4);
+        return datas;
+    }
+
+    public static List<AnimRes> getAnimResDatas() {
+        List<AnimRes> datas = new ArrayList<>();
+        AnimRes animRes0 = new AnimRes();
+        animRes0.setNormalImgRes(R.mipmap.iv_no_transition_normal);
+        animRes0.setSelectdImgRes(R.mipmap.iv_no_transition_selected);
+        animRes0.setSelected(true);
+        animRes0.setAnimName("无");
+        animRes0.setAnimType(0);
+        datas.add(animRes0);
+
+        AnimRes animRes1 = new AnimRes();
+        animRes1.setNormalImgRes(R.mipmap.iv_zoom_big_normal);
+        animRes1.setSelectdImgRes(R.mipmap.iv_zoom_big_selected);
+        animRes1.setSelected(false);
+        animRes1.setAnimName("放大");
+        animRes1.setAnimType(1);
+        datas.add(animRes1);
+
+        AnimRes animRes2 = new AnimRes();
+        animRes2.setNormalImgRes(R.mipmap.iv_zoom_small_normal);
+        animRes2.setSelectdImgRes(R.mipmap.iv_zoom_small_selected);
+        animRes2.setSelected(false);
+        animRes2.setAnimName("缩小");
+        animRes2.setAnimType(2);
+        datas.add(animRes2);
+
+        AnimRes animRes3 = new AnimRes();
+        animRes3.setNormalImgRes(R.mipmap.iv_to_left_normal);
+        animRes3.setSelectdImgRes(R.mipmap.iv_to_left_selected);
+        animRes3.setSelected(false);
+        animRes3.setAnimName("左滑");
+        animRes3.setAnimType(3);
+        datas.add(animRes3);
+
+        AnimRes animRes4 = new AnimRes();
+        animRes4.setNormalImgRes(R.mipmap.iv_to_right_normal);
+        animRes4.setSelectdImgRes(R.mipmap.iv_to_right_selected);
+        animRes4.setSelected(false);
+        animRes4.setAnimName("右滑");
+        animRes4.setAnimType(4);
+        datas.add(animRes4);
+        return datas;
     }
 
     public static boolean isActivityAlive(Activity activity) {
@@ -363,160 +433,6 @@ public class MultiUtils {
             result += second;
         }
         return result;
-    }
-
-    @TargetApi(Build.VERSION_CODES.KITKAT)
-    public static String getPath_above19(final Context context, final Uri uri) {
-        final boolean isKitKat = Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT;
-        // DocumentProvider
-        if (isKitKat && DocumentsContract.isDocumentUri(context, uri)) {
-            // ExternalStorageProvider
-            if (isExternalStorageDocument(uri)) {
-                final String docId = DocumentsContract.getDocumentId(uri);
-                final String[] split = docId.split(":");
-
-                final String type = split[0];
-                if ("primary".equalsIgnoreCase(type)) {
-                    return Environment.getExternalStorageDirectory() + "/" + split[1];
-                } else {
-                    return getRealStoragePath(context, "/" + split[1]);
-                }
-            }
-            // DownloadsProvider
-            else if (isDownloadsDocument(uri)) {
-                final String id = DocumentsContract.getDocumentId(uri);
-                final Uri contentUri = ContentUris.withAppendedId(Uri.parse(DOWNLOAD_CONTENT), Long.parseLong(id));
-                return getDataColumn(context, contentUri, null, null);
-            }
-            // MediaProvider
-            else if (isMediaDocument(uri)) {
-                final String docId = DocumentsContract.getDocumentId(uri);
-                final String[] split = docId.split(":");
-                final String type = split[0];
-                Uri contentUri = null;
-                if ("image".equals(type)) {
-                    contentUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
-                } else if ("video".equals(type)) {
-                    contentUri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
-                } else if ("audio".equals(type)) {
-                    contentUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-                }
-                final String selection = "_id=?";
-                final String[] selectionArgs = new String[]{
-                        split[1]
-                };
-                return getDataColumn(context, contentUri, selection, selectionArgs);
-            }
-        }
-        // MediaStore (and general)
-        else if ("content".equalsIgnoreCase(uri.getScheme())) {
-            // Return the remote address
-            if (isGooglePhotosUri(uri))
-                return uri.getLastPathSegment();
-            return getDataColumn(context, uri, null, null);
-        }
-        // File
-        else if ("file".equalsIgnoreCase(uri.getScheme())) {
-            return uri.getPath();
-        }
-        return null;
-    }
-
-    /**
-     * @param uri The Uri to check.
-     * @return Whether the Uri authority is ExternalStorageProvider.
-     */
-    public static boolean isExternalStorageDocument(Uri uri) {
-        return "com.android.externalstorage.documents".equals(uri.getAuthority());
-    }
-
-    //反射循环判断文件的真实路径
-    public static String getRealStoragePath(Context context, String pathTail) {
-        try {
-            StorageManager sm = (StorageManager) context.getSystemService(context.STORAGE_SERVICE);
-            Method getVolumePathsMethod = StorageManager.class.getMethod("getVolumePaths");
-            getVolumePathsMethod.setAccessible(true);
-            Object result = getVolumePathsMethod.invoke(sm);
-
-            if (result != null && result instanceof String[]) {
-                String[] paths = (String[]) result;
-                for (String path : paths) {
-                    if (new File(path + pathTail).exists()) {
-                        return path + pathTail;
-                    }
-                }
-            }
-
-        } catch (Exception e) {
-            Log.e("demo", "getSecondaryStoragePath() failed", e);
-        }
-
-        return null;
-    }
-
-    /**
-     * @param uri The Uri to check.
-     * @return Whether the Uri authority is DownloadsProvider.
-     */
-    public static boolean isDownloadsDocument(Uri uri) {
-        return "com.android.providers.downloads.documents".equals(uri.getAuthority());
-    }
-
-    public static String getDataColumn(Context context, Uri uri, String selection,
-                                       String[] selectionArgs) {
-        Cursor cursor = null;
-        final String column = "_data";
-        final String[] projection = {column};
-
-        try {
-            cursor = context.getContentResolver().query(uri, projection, selection, selectionArgs,
-                    null);
-            if (cursor != null && cursor.moveToFirst()) {
-                final int index = cursor.getColumnIndexOrThrow(column);
-                return cursor.getString(index);
-            }
-        } finally {
-            if (cursor != null)
-                cursor.close();
-        }
-        return null;
-    }
-
-    /**
-     * @param uri The Uri to check.
-     * @return Whether the Uri authority is MediaProvider.
-     */
-    public static boolean isMediaDocument(Uri uri) {
-        return "com.android.providers.media.documents".equals(uri.getAuthority());
-    }
-
-
-    /**
-     * @param uri The Uri to check.
-     * @return Whether the Uri authority is Google Photos.
-     */
-    public static boolean isGooglePhotosUri(Uri uri) {
-        return "com.google.android.apps.photos.content".equals(uri.getAuthority());
-    }
-
-    /**
-     * API19以下获取图片路径的方法
-     *
-     * @param uri
-     */
-    public static String getFilePath_below19(Context context, Uri uri) {
-        //这里开始的第二部分，获取图片的路径：低版本的是没问题的，但是sdk>19会获取不到
-        String[] proj = {MediaStore.Images.Media.DATA};
-        //好像是android多媒体数据库的封装接口，具体的看Android文档
-        Cursor cursor = context.getContentResolver().query(uri, proj, null, null, null);
-        //获得用户选择的图片的索引值
-        int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
-        //将光标移至开头 ，这个很重要，不小心很容易引起越界
-        cursor.moveToFirst();
-        //最后根据索引值获取图片路径
-        String path = cursor.getString(column_index);
-        cursor.close();
-        return path;
     }
 
 }
