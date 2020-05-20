@@ -77,9 +77,9 @@
                 android:id="@+id/tv_play_time"
                 android:layout_width="40dp"
                 android:layout_height="wrap_content"
+                android:text="00:00"
                 android:textColor="@color/white"
-                android:textSize="13sp"
-                android:text="00:00"/>
+                android:textSize="13sp" />
 
             <SeekBar
                 android:id="@+id/sb_play_progress"
@@ -89,8 +89,7 @@
                 android:maxHeight="2dp"
                 android:minHeight="2dp"
                 android:progressDrawable="@drawable/seekbar_play_progress"
-                android:thumb="@drawable/white_circle"
-                />
+                android:thumb="@drawable/white_circle" />
 
             <TextView
                 android:id="@+id/tv_total_time"
@@ -168,6 +167,19 @@
                 <TextView
                     style="@style/tv_edit_operation"
                     android:text="文字" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/ll_special_effect"
+                style="@style/ll_edit_operation">
+
+                <ImageView
+                    style="@style/iv_edit_operation"
+                    android:src="@mipmap/iv_special_effect" />
+
+                <TextView
+                    style="@style/tv_edit_operation"
+                    android:text="特效" />
             </LinearLayout>
 
         </LinearLayout>

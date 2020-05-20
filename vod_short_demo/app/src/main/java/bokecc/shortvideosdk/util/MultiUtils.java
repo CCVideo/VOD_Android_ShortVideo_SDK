@@ -1,6 +1,8 @@
 package bokecc.shortvideosdk.util;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
+import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
@@ -9,11 +11,18 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
+import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Environment;
+import android.os.storage.StorageManager;
+import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.Display;
+import android.view.View;
+import android.view.Window;
 import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.Toast;
@@ -23,6 +32,9 @@ import com.bokecc.shortvideo.combineimages.model.SelectVideoInfo;
 import com.bumptech.glide.Glide;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -34,6 +46,7 @@ import bokecc.shortvideosdk.ShortVideoApplication;
 import bokecc.shortvideosdk.cutvideo.VideoBean;
 import bokecc.shortvideosdk.model.AnimRes;
 import bokecc.shortvideosdk.model.MusicInfo;
+import bokecc.shortvideosdk.model.SpecialEffectRes;
 import bokecc.shortvideosdk.model.TransitionRes;
 
 public class MultiUtils {
@@ -172,6 +185,18 @@ public class MultiUtils {
             outPutVideo.delete();
         }
 
+        return outPutVideo.getAbsolutePath();
+    }
+
+    //获得输出视频的路径
+    public static String getEffectOutputVideoPath() {
+        String outPath = Environment.getExternalStorageDirectory().getPath() + File.separator + APP_FILE_PATH;
+        File file = new File(outPath);
+        if (!file.exists()) {
+            file.mkdirs();
+        }
+
+        File outPutVideo = new File(outPath, "effect.mp4");
         return outPutVideo.getAbsolutePath();
     }
 
@@ -407,6 +432,47 @@ public class MultiUtils {
         return datas;
     }
 
+    public static List<SpecialEffectRes> getSpecialEffectResDatas() {
+        List<SpecialEffectRes> datas = new ArrayList<>();
+
+        SpecialEffectRes SpecialEffectRes1 = new SpecialEffectRes();
+        SpecialEffectRes1.setNormalImgRes(R.mipmap.iv_shake_normal);
+        SpecialEffectRes1.setSelectdImgRes(R.mipmap.iv_shake_selected);
+        SpecialEffectRes1.setSelected(false);
+        SpecialEffectRes1.setSpEffectName("抖动");
+        datas.add(SpecialEffectRes1);
+
+        SpecialEffectRes SpecialEffectRes2 = new SpecialEffectRes();
+        SpecialEffectRes2.setNormalImgRes(R.mipmap.iv_splash_screen_normal);
+        SpecialEffectRes2.setSelectdImgRes(R.mipmap.iv_splash_screen_selected);
+        SpecialEffectRes2.setSelected(false);
+        SpecialEffectRes2.setSpEffectName("闪屏");
+        datas.add(SpecialEffectRes2);
+
+        SpecialEffectRes SpecialEffectRes3 = new SpecialEffectRes();
+        SpecialEffectRes3.setNormalImgRes(R.mipmap.iv_sprinkle_gold_normal);
+        SpecialEffectRes3.setSelectdImgRes(R.mipmap.iv_sprinkle_gold_selected);
+        SpecialEffectRes3.setSelected(false);
+        SpecialEffectRes3.setSpEffectName("幻觉");
+        datas.add(SpecialEffectRes3);
+
+        SpecialEffectRes SpecialEffectRes4 = new SpecialEffectRes();
+        SpecialEffectRes4.setNormalImgRes(R.mipmap.iv_fly_flower_normal);
+        SpecialEffectRes4.setSelectdImgRes(R.mipmap.iv_fly_flower_selected);
+        SpecialEffectRes4.setSelected(false);
+        SpecialEffectRes4.setSpEffectName("毛刺");
+        datas.add(SpecialEffectRes4);
+
+        SpecialEffectRes SpecialEffectRes5 = new SpecialEffectRes();
+        SpecialEffectRes5.setNormalImgRes(R.mipmap.iv_light_spot_normal);
+        SpecialEffectRes5.setSelectdImgRes(R.mipmap.iv_light_spot_selected);
+        SpecialEffectRes5.setSelected(false);
+        SpecialEffectRes5.setSpEffectName("缩放");
+        datas.add(SpecialEffectRes5);
+
+        return datas;
+    }
+
     public static boolean isActivityAlive(Activity activity) {
         if (activity != null && !activity.isFinishing()) {
             return true;
@@ -433,6 +499,56 @@ public class MultiUtils {
             result += second;
         }
         return result;
+    }
+
+    /**
+     * 获取视频帧列表
+     *
+     * @param path
+     * @param count    期望个数
+     * @param width    期望压缩后宽度
+     * @param height   期望压缩后高度
+     * @param listener
+     */
+    public static void getLocalVideoBitmap(final String path, final int count, final int width, final int height, final OnBitmapGetListener listener) {
+        AsyncTask<Object, Object, Object> task = new AsyncTask<Object, Object, Object>() {
+            @Override
+            protected Object doInBackground(Object... params) {
+                MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+                try {
+                    mmr.setDataSource(path);
+                    long duration = (Long.valueOf(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION))) * 1000;
+                    long inv = (duration / count);
+
+                    for (long i = 0; i < duration; i += inv) {
+                        //注意getFrameAtTime方法的timeUs 是微妙， 1us * 1000 * 1000 = 1s
+                        Bitmap bitmap = mmr.getFrameAtTime(i, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+                        Bitmap destBitmap = Bitmap.createScaledBitmap(bitmap, width, height, false);
+                        bitmap.recycle();
+
+                        publishProgress(destBitmap);
+                    }
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                } finally {
+                    mmr.release();
+                }
+                return null;
+            }
+
+            @Override
+            protected void onProgressUpdate(Object... values) {
+                if (listener != null) {
+                    listener.onBitmapGet((Bitmap) values[0]);
+                }
+            }
+
+            @Override
+            protected void onPostExecute(Object result) {
+
+            }
+        };
+        task.execute();
     }
 
 }

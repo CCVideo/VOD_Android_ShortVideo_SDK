@@ -46,8 +46,8 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     implementation 'com.android.support:recyclerview-v7:28.0.0'
     implementation 'com.bokecc:speedplay:2.19.3'
-    implementation(name:'shortvideo2.3.0', ext:'aar')
-    implementation(name:'camerafilter2.3.0', ext:'aar')
+    implementation(name:'shortvideo2.4.0', ext:'aar')
+    implementation(name:'camerafilter2.4.0', ext:'aar')
     implementation 'com.github.bumptech.glide:glide:3.7.0'
 
 

@@ -8,6 +8,7 @@ import android.content.res.Resources;
 import android.graphics.Rect;
 import android.graphics.SurfaceTexture;
 import android.graphics.drawable.Drawable;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
@@ -46,6 +47,7 @@ import bokecc.shortvideosdk.MainActivity;
 import bokecc.shortvideosdk.R;
 import bokecc.shortvideosdk.cutvideo.TimeSliderView;
 import bokecc.shortvideosdk.cutvideo.VideoBean;
+import bokecc.shortvideosdk.model.SpecialEffectInfo;
 import bokecc.shortvideosdk.model.StickerRes;
 import bokecc.shortvideosdk.util.FileUtils;
 import bokecc.shortvideosdk.util.MultiUtils;
@@ -70,14 +72,14 @@ import bokecc.shortvideosdk.widget.sticker.ZoomIconEvent;
 import static android.opengl.GLSurfaceView.RENDERMODE_WHEN_DIRTY;
 
 public class EditVideoActivity extends Activity implements MediaPlayer.OnPreparedListener, GLSurfaceView.Renderer, View.OnClickListener {
-    private String videoPath, originalPath, bacMusicPath;
+    private String videoPath, originalPath, bacMusicPath, recordPath, effectPath;
     private GLSurfaceView gl_view;
     private MediaPlayer mediaPlayer;
     private VideoDrawer mDrawer;
     private Activity activity;
     private int videoWidth, videoHeight, windowWidth, windowHeight, afterChangeVideoHeight;
     private LinearLayout ll_edit_operation, ll_edit_filter, ll_edit_beauty, ll_edit_music, ll_edit_volume,
-            ll_origin_volume, ll_music_volume, ll_cut_music, ll_sticker, ll_text, ll_set_sticker_time;
+            ll_origin_volume, ll_music_volume, ll_cut_music, ll_sticker, ll_text, ll_set_sticker_time, ll_special_effect;
     private int currentBeautyWhiteValue = 0, currentBeautySkinValue = 0, filterPosition = 0;
     private int videoDuration, musicDuration;
     private boolean isRecord = false, isClickNext = false;
@@ -110,6 +112,8 @@ public class EditVideoActivity extends Activity implements MediaPlayer.OnPrepare
     private FrameLayout fl_sticker;
     private Surface surface;
     private boolean isFromCombineImages = false;
+    private SurfaceTexture surfaceTexture;
+    private ArrayList<SpecialEffectInfo> effects;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -125,6 +129,8 @@ public class EditVideoActivity extends Activity implements MediaPlayer.OnPrepare
     private void initPlay() {
         mediaPlayer = new MediaPlayer();
         mediaPlayer.setOnPreparedListener(this);
+        mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+        mediaPlayer.setScreenOnWhilePlaying(true);
         mediaPlayer.setLooping(true);
         try {
             mediaPlayer.setDataSource(videoPath);
@@ -136,8 +142,10 @@ public class EditVideoActivity extends Activity implements MediaPlayer.OnPrepare
 
     private void initView() {
         videoPath = getIntent().getStringExtra("videoPath");
+        recordPath = videoPath;
         isRecord = getIntent().getBooleanExtra("isRecord", false);
         originalPath = getIntent().getStringExtra("originalPath");
+        rotation = getIntent().getIntExtra("rotation", 0);
         originalRotation = getIntent().getIntExtra("originalRotation", 0);
         isFromCombineImages = getIntent().getBooleanExtra("combineImages", false);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -167,6 +175,9 @@ public class EditVideoActivity extends Activity implements MediaPlayer.OnPrepare
 
         ll_edit_volume = findViewById(R.id.ll_edit_volume);
         ll_edit_volume.setOnClickListener(this);
+
+        ll_special_effect = findViewById(R.id.ll_special_effect);
+        ll_special_effect.setOnClickListener(this);
 
         tv_music_volume_value = findViewById(R.id.tv_music_volume_value);
         tv_origin_volume_value = findViewById(R.id.tv_origin_volume_value);
@@ -233,6 +244,7 @@ public class EditVideoActivity extends Activity implements MediaPlayer.OnPrepare
                 }
             }
         });
+
     }
 
     private void editStickerShowTime() {
@@ -336,6 +348,7 @@ public class EditVideoActivity extends Activity implements MediaPlayer.OnPrepare
         gl_view.setCameraDistance(100);
         mDrawer = new VideoDrawer(activity, getResources());
         mDrawer.setRotation(rotation);
+
     }
 
     @Override
@@ -369,7 +382,7 @@ public class EditVideoActivity extends Activity implements MediaPlayer.OnPrepare
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
         mDrawer.onSurfaceCreated(gl, config);
-        SurfaceTexture surfaceTexture = mDrawer.getSurfaceTexture();
+        surfaceTexture = mDrawer.getSurfaceTexture();
         surfaceTexture.setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
             @Override
             public void onFrameAvailable(SurfaceTexture surfaceTexture) {
@@ -379,6 +392,7 @@ public class EditVideoActivity extends Activity implements MediaPlayer.OnPrepare
 
         surface = new Surface(surfaceTexture);
         mediaPlayer.setSurface(surface);
+
     }
 
     @Override
@@ -451,6 +465,16 @@ public class EditVideoActivity extends Activity implements MediaPlayer.OnPrepare
                 break;
             case R.id.iv_confirm_set_sticker_time:
                 confirmSetStickerTime();
+                break;
+
+            case R.id.ll_special_effect:
+                Intent intent = new Intent(activity, EditSpecialEffectActivity.class);
+                intent.putExtra("videoPath", recordPath);
+                if (effects != null) {
+                    intent.putParcelableArrayListExtra("effects", effects);
+                    effectPath = videoPath;
+                }
+                startActivityForResult(intent, 1);
                 break;
         }
     }
@@ -637,6 +661,32 @@ public class EditVideoActivity extends Activity implements MediaPlayer.OnPrepare
     private void setOriginVolume() {
         originVolume = MultiUtils.calFloat(1, defaultOriginVolume, 100);
         mediaPlayer.setVolume(originVolume, originVolume);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode != Activity.RESULT_OK) {
+            return;
+        }
+
+        if (requestCode == 1) {
+            videoPath = data.getStringExtra("path");
+            effects = data.getParcelableArrayListExtra("effects");
+            if (mediaPlayer != null) {
+                try {
+                    mediaPlayer.pause();
+                    mediaPlayer.stop();
+                    mediaPlayer.reset();
+                    mediaPlayer.setLooping(true);
+                    mediaPlayer.setDataSource(videoPath);
+                    mediaPlayer.prepare();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+        }
     }
 
     //编辑贴纸
@@ -1024,7 +1074,7 @@ public class EditVideoActivity extends Activity implements MediaPlayer.OnPrepare
         if (hideEditMusic()) return true;
         if (isRecord) {
             startActivity(new Intent(activity, MainActivity.class));
-        }else if(isFromCombineImages){
+        } else if (isFromCombineImages) {
 
         } else {
             startActivity(new Intent(activity, CutVideoActivity.class).putExtra("videoPath", originalPath).putExtra("rotation", originalRotation));
@@ -1045,10 +1095,11 @@ public class EditVideoActivity extends Activity implements MediaPlayer.OnPrepare
 
     @Override
     public Resources getResources() {
-        Resources resources =  super.getResources();
+        Resources resources = super.getResources();
         Configuration configuration = new Configuration();
         configuration.setToDefaults();
-        resources.updateConfiguration(configuration,resources.getDisplayMetrics());
+        resources.updateConfiguration(configuration, resources.getDisplayMetrics());
         return resources;
     }
+
 }

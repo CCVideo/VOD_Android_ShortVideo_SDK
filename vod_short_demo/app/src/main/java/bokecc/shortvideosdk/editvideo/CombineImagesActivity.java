@@ -18,9 +18,9 @@ import com.bokecc.shortvideo.combineimages.ImagesToVideoHelper;
 import com.bokecc.shortvideo.combineimages.ImagesVideo;
 import com.bokecc.shortvideo.combineimages.ImagesVideoPlayer;
 import com.bokecc.shortvideo.combineimages.model.SelectImageInfo;
-import com.bokecc.shortvideo.combineimages.render.IVTextureView;
 import com.bokecc.shortvideo.combineimages.render.SurfaceImagesVideoRenderer;
 import com.bokecc.shortvideo.combineimages.render.TextureImagesVideoRender;
+import com.bokecc.shortvideo.combineimages.render.IVTextureView;
 import com.bokecc.shortvideo.combineimages.timer.IVideoTimer;
 import com.bokecc.shortvideo.combineimages.videorecord.ImagesVideoMaker;
 
@@ -578,7 +578,7 @@ public class CombineImagesActivity extends Activity implements IVideoTimer.Image
     }
 
     private void combineImagesToVideo() {
-        //合成视频
+        //渲染合成视频
         imagesVideoPlayer.pause();
         CustomProgressDialog handleProgressDialog = new CustomProgressDialog(activity);
         handleProgressDialog.show();

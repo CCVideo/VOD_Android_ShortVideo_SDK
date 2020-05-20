@@ -24,5 +24,6 @@
     <color name="sixtyBlack">#99000000</color>
     <color name="fiftyWhite">#80FFFFFF</color>
     <color name="transparent">#00000000</color>
+    <color name="editSpBac">#0F0F1B</color>
 
 </resources>
